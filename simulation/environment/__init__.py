@@ -1,1 +1,1 @@
-from simulation.env.robot_env import RobotEnv
+from simulation.environment.robot_env import RobotEnv

@@ -1,6 +1,9 @@
-import numpy as np
 import gym
 import cv2
+import math
+import numpy as np
+from utils import transformations
+from dm_control.mujoco.wrapper.mjbindings import mjlib
 from sklearn.preprocessing import MinMaxScaler
 from simulation.controller.sensor import RGBDSensor
 
@@ -13,20 +16,25 @@ class Actuator:
         self._sensor = RGBDSensor(robot=self.physics, config=config)
 
         # Last gripper action
-        self._gripper_open = True
+        self.gripper_open = True
+
+        self._workspace = {'lower': np.array([-0.5, -0.5, 0.1]),
+                           'upper': np.array([0.5, 0.5, 0.5])}
+        self._roll_rotation = {'lower': -np.pi / 4,
+                               'upper': np.pi / 4}
 
     def reset(self):
         """
         Reset the gripper to its open position.
         """
-        self.open_gripper(half_open=True)
-        self._gripper_open = True
+        # self.open_gripper(half_open=True)
+        self.gripper_open = True
 
-    def step(self, action):
+    def _normalise_action(self, action):
         """
-        Perform a step with the actuator.
-        :param action: [np.array] the action to perform
-        :return: moves the gripper
+        Normalise the action to actual values.
+        :param action: [np.array] provided action
+        :return: [np.array] normalised translation, rotation and gripper action (open/close)
         """
         # denormalize action vector from values [-1, 1] to
         # the bounds of the +-max_translation and +-max_rotation
@@ -40,14 +48,72 @@ class Actuator:
         else:
             # the rotation matrix includes only the yaw angle
             translation, rotation = self._clip_translation_vector(action[:3], action[3:4])
-        # open/close the gripper
-        open_close = action[-1]
-        # move the robot
-        self.robot.relative_pose(translation, rotation)
-        if open_close > 0. and not self._gripper_open:
-            self.open_gripper()
-        elif open_close < 0. and self._gripper_open:
-            self.close_gripper()
+        return translation, rotation, action[-1]
+
+    def scale_control(self, qpos):
+        _low = np.r_[[-self.config.max_translation] * 3, [-self.config.max_rotation] * 2]
+        _high = -_low
+        # max_translation and max_rotation will be scaled to 1
+        _scaler = MinMaxScaler((-1, 1))
+        _scaler.fit(np.vstack((_low, _high)))
+        return _scaler.transform(qpos)
+        # return self._action_scaler.transform(qpos)
+
+    def _get_current_pose(self):
+        current_pos = self.physics.named.data.xpos["ee"]
+        current_ori_quat = self.physics.named.data.xquat["ee"]
+        yaw, pitch, roll = transformations.euler_from_quaternion(current_ori_quat,
+                                                                 axes=(0, 0, 0, 1))
+        current_ori = np.array([roll, pitch, yaw])
+        return current_pos, current_ori
+
+    def get_target_pose(self, action):
+
+        translation, rotation, open_close = self._normalise_action(action)
+
+        if not self.config.include_roll:
+            rotation = np.array([0., 0., rotation[0]])
+        else:
+            rotation = np.array([rotation[0], 0., rotation[1]])
+
+        current_pos, current_ori = self._get_current_pose()
+
+        T_world_old = transformations.compose_matrix(
+            angles=current_ori, translate=current_pos)
+
+        T_old_to_new = transformations.compose_matrix(
+            angles=rotation, translate=translation)
+
+        T_world_new = np.dot(T_world_old, T_old_to_new)
+
+        position = T_world_new[:3, 3]
+        # orientation = current_ori + rotation
+        orientation = np.array(transformations.euler_from_matrix(T_world_new))
+        target_pos, target_ori = self._enforce_constraints(position, orientation)
+
+        err_pos = target_pos - current_pos
+        err_ori = target_ori - current_ori
+
+        # compute the Jacobian
+        jac_pos = np.zeros((3, self.physics.model.nv))
+        jac_rot = np.zeros((3, self.physics.model.nv))
+
+        mjlib.mj_jacBody(self.physics.model.ptr,
+                         self.physics.data.ptr,
+                         jac_pos,
+                         jac_rot,
+                         self.physics.model.name2id('ee', 'body'))
+
+        J_full = np.vstack([jac_pos[:, :5], jac_rot[:, :5]])
+        J_inv = np.linalg.pinv(J_full)
+
+        # compute the joint angles
+        err_qpos = np.dot(J_inv, np.hstack([[err_pos], [err_ori]]).T).T.squeeze()
+
+        # err_qpos = self._actuator.move_to_pose(current_pos, current_ori,
+        #                                        target_pos, target_ori)
+        target_qpos = self.physics.data.qpos[:5] + err_qpos
+        return target_qpos
 
     def close_gripper(self):
         """
@@ -59,7 +125,7 @@ class Actuator:
         # for _ in range(5):
         #     self.physics.step()
 
-        self._gripper_open = True
+        self.gripper_open = True
         # set the ctrl (motors) controlling the gripper left and right knuckle_link to -1
         self.physics.data.ctrl[6:8] = -1
         # set the position of the gripper links when fully closed
@@ -68,35 +134,36 @@ class Actuator:
         step = 0
         camera_id = 3
 
-        while self._gripper_open:
+        while self.gripper_open:
             self.physics.step()
             step += 1
 
             if self.config.show_obs:
                 self.physics.render()
 
-            # img = []
-            # for camera in range(camera_id):
-            #     rgb, _ = self._sensor.render_images(camera_id=camera,
-            #                                            w_zoom=self.config.rendering_zoom_width,
-            #                                            h_zoom=self.config.rendering_zoom_height)
-            #     img.append(rgb)
-            #
-            # result = np.hstack(img)
-            # cv2.imwrite(f'images6/{step}_g.png',  cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-            # print(self.physics.data.qpos)
-            # print('sensordata', self.physics.data.sensordata)
-            # print('step', step)
+            img = []
+            for camera in range(camera_id):
+                rgb, _ = self._sensor.render_images(camera_id=camera,
+                                                       w_zoom=self.config.rendering_zoom_width,
+                                                       h_zoom=self.config.rendering_zoom_height)
+                img.append(rgb)
+
+            result = np.hstack(img)
+            cv2.imwrite(f'images6/0_{step}_close.png',  cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+            print(self.physics.data.qpos)
+            print('sensordata', self.physics.data.sensordata)
+            print('step', step)
 
             # check if the object is securely grasped
             object_securely_graspped = self.physics.data.sensordata[0] > self.config.grasp_tolerance
             # check the gripper's links positions
             gripper_fully_closed = np.all(np.abs(self.physics.data.qpos[5:7] -
                                                  [target_pos]) < self.config.gripper_tolerance)
-            if object_securely_graspped or gripper_fully_closed:
-            # if gripper_fully_closed:
+            # if object_securely_graspped or gripper_fully_closed:
+            if gripper_fully_closed:
                 self.physics.data.ctrl[6:8] = 0
-                self._gripper_open = False
+
+                self.gripper_open = False
                 break
 
         return object_securely_graspped
@@ -119,7 +186,7 @@ class Actuator:
         # step = 0
         # camera_id = 3
 
-        while not self._gripper_open:
+        while not self.gripper_open:
             self.physics.step()
             # step += 1
             # print(self.physics.data.qpos)
@@ -140,7 +207,7 @@ class Actuator:
                                          [target_pos]) < self.config.gripper_tolerance)
             if gripper_open:
                 self.physics.data.ctrl[6:8] = 0
-                self._gripper_open = True
+                self.gripper_open = True
                 break
 
     def get_gripper_width(self):
@@ -154,20 +221,6 @@ class Actuator:
         right_finger_pos = 0.4 + self.physics.data.qpos[1]
 
         return (left_finger_pos + right_finger_pos) / 1.6
-
-    def push(self):
-
-        # push only when the gripper is closed
-        if not self._gripper_open:
-            # push
-            pass
-        else:
-            self.close_gripper()
-
-        pass
-
-    def pull(self):
-        pass
 
     def setup_action_space(self):
         """
@@ -208,10 +261,38 @@ class Actuator:
         """
         # clip the position coordinates if the gripper translates more than 0.05 m
         length = np.linalg.norm(translation)
-        if length > self._max_translation:  # TODO: change the norm for when x, y, z are max_translation
-            translation *= self._max_translation / length
+        if length > self.config.max_translation:
+            translation *= self.config.max_translation / length
 
         # clip roll and yaw angle to a rotation of +- 0.15 rad
         rotation = np.clip(rotation, -self.config.max_rotation, self.config.max_rotation)
 
         return translation, rotation
+
+    def _enforce_constraints(self, position, orientation):
+        """
+        Enforce constraints on the next robot movement. The robot
+        is allowed to move only within the workspace and within a
+        certain angle range.
+        :param position: [np.array] position of the robot
+        :param orientation: [np.array] orientation of the robot
+        :return: [np.array] constrained position and orientation
+        """
+        # if the roll is allowed, the roll angle is constrained
+        # to +=-pi/4, else it is set to 0
+        # the pitch angle is fixed to 0
+        # the yaw angle is not constrained
+        if not self.config.include_roll:
+            orientation[0] = 0.
+        else:
+            if orientation[0] > self._roll_rotation['upper']:
+                orientation[0] = self._roll_rotation['upper']
+            if orientation[0] < self._roll_rotation['lower']:
+                orientation[0] = self._roll_rotation['lower']
+        orientation[1] = 0.
+
+        position = np.clip(position,
+                           self._workspace['lower'],
+                           self._workspace['upper'])
+
+        return position, orientation

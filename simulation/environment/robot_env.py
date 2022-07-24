@@ -27,7 +27,6 @@ def _reset(robot, actuator):
 
 
 class RobotEnv(gym.Env):
-
     class Events(Enum):
         START_EPISODE = 0
         END_EPISODE = 1
@@ -45,10 +44,6 @@ class RobotEnv(gym.Env):
         self.physics = mujoco.Physics.from_xml_path(config.xml_path)
         self._sensor = RGBDSensor(robot=self.physics, config=config)
         self._actuator = Actuator(robot=self.physics, config=config)
-        self._workspace = {'lower': np.array([-0.5, -0.5, 0.1]),
-                           'upper': np.array([0.5, 0.5, 0.5])}
-        self._roll_rotation = {'lower': -np.pi/4,
-                               'upper': np.pi/4}
         self._callbacks = {RobotEnv.Events.START_EPISODE: [],
                            RobotEnv.Events.END_EPISODE: [],
                            RobotEnv.Events.CLOSE: [],
@@ -107,8 +102,58 @@ class RobotEnv(gym.Env):
 
         return self.obs
 
-    # def step(self):
-    #     self.physics.step()
+    def step(self, action):
+        """
+        Perform a step in the environment.
+        :param action:
+        :return:
+        """
+        self.pos_reached = False
+        init_qpos = self.physics.data.qpos[:5].copy()
+
+        target_qpos = self._actuator.get_target_pose(action)
+
+        step_limit = self.config.max_steps
+
+        while not self.pos_reached:
+            current_qpos = self.physics.data.qpos[:5]
+            self.physics.data.ctrl[0:5] = self._actuator.scale_control([target_qpos - current_qpos])
+            self.physics.step()
+            step_limit -= 1
+            print("Iteration: ", 1000 - step_limit)
+            if self.config.show_obs:
+                self.render()
+
+            deltas = abs(current_qpos - target_qpos)
+            print("qpos difference:", deltas)
+            if max(deltas) < 0.002:
+                self.pos_reached = True
+                self.physics.data.ctrl[0:5] = 0
+            if step_limit == 0:
+                print("Target not reached. Returning to initial position.")
+                target_qpos = init_qpos
+
+                for i in range(self.config.max_steps):
+                    current_qpos = self.physics.data.qpos[:5]
+                    self.physics.data.ctrl[0:5] = self._actuator.scale_control([target_qpos - current_qpos])
+                    self.physics.step()
+                    if self.config.show_obs:
+                        self.render()
+                    deltas = abs(current_qpos - target_qpos)
+                    print("qpos difference:", deltas)
+                    if max(deltas) < 0.002:
+                        self.pos_reached = True
+                        self.physics.data.ctrl[0:5] = 0
+                        break
+                if not self.pos_reached:
+                    self.status = RobotEnv.Status.TIME_LIMIT
+
+
+        print("Final position: ", self.physics.named.data.xpos["ee"])
+        # print("Target position: ", target_pos)
+        print("Final position: ", self.physics.named.data.xquat["ee"])
+        # print("Target position: ", target_ori)
+
 
     def close_gripper(self):
         # self._gripper_open = False
@@ -186,34 +231,6 @@ class RobotEnv(gym.Env):
             cv2.waitKey(1)
             time.sleep(0.01)
 
-    def _enforce_constraints(self, position, orientation):
-        """
-        Enforce constraints on the next robot movement. The robot
-        is allowed to move only within the workspace and within a
-        certain angle range.
-        :param position: [np.array] position of the robot
-        :param orientation: [np.array] orientation of the robot
-        :return: [np.array] constrained position and orientation
-        """
-        # if the roll is allowed, the roll angle is constrained
-        # to +=-pi/4, else it is set to 0
-        # the pitch angle is fixed to 0
-        # the yaw angle is not constrained
-        if not self.config.include_roll:
-            orientation[0] = 0.
-        else:
-            if orientation[0] > self._roll_rotation['upper']:
-                orientation[0] = self._roll_rotation['upper']
-            if orientation[0] < self._roll_rotation['lower']:
-                orientation[0] = self._roll_rotation['lower']
-        orientation[1] = 0.
-
-        position = np.clip(position,
-                           self._workspace['lower'],
-                           self._workspace['upper'])
-
-        return position, orientation
-
     def move_to_pose(self, translation, rotation, steps=100):
         """
         Compute joint angles and move the robot to the given pose.
@@ -227,7 +244,7 @@ class RobotEnv(gym.Env):
         else:
             rotation = np.array([rotation[0], 0., rotation[1]])
         current_qpos = self.physics.data.qpos[0:5]
-
+        camera_id = 3
         for i in range(steps):
             self.physics.step()
             current_pos = self.physics.named.data.xpos["ee"]
@@ -257,10 +274,10 @@ class RobotEnv(gym.Env):
             jac_rot = np.zeros((3, self.physics.model.nv))
 
             mjlib.mj_jacBody(self.physics.model.ptr,
-                         self.physics.data.ptr,
-                         jac_pos,
-                         jac_rot,
-                         self.physics.model.name2id('ee', 'body'))
+                             self.physics.data.ptr,
+                             jac_pos,
+                             jac_rot,
+                             self.physics.model.name2id('ee', 'body'))
 
             J_full = np.vstack([jac_pos[:, :5], jac_rot[:, :5]])
             J_inv = np.linalg.pinv(J_full)
@@ -278,15 +295,15 @@ class RobotEnv(gym.Env):
             print(f"Step {i}")
             if self.config.show_obs:
                 self.render()
-            # img = []
-            # for camera in range(camera_id):
-            #     rgb, _ = self._sensor.render_images(camera_id=camera,
-            #                                         w_zoom=self.config.rendering_zoom_width,
-            #                                         h_zoom=self.config.rendering_zoom_height)
-            #     img.append(rgb)
-            #
-            # result = np.hstack(img)
-            # cv2.imwrite(f'images6/{i}.png', cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+            img = []
+            for camera in range(camera_id):
+                rgb, _ = self._sensor.render_images(camera_id=camera,
+                                                    w_zoom=self.config.rendering_zoom_width,
+                                                    h_zoom=self.config.rendering_zoom_height)
+                img.append(rgb)
+
+            result = np.hstack(img)
+            cv2.imwrite(f'images6/1_{i}_move_x.png', cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
             # self.physics.step()
             if np.abs(target_pos - self.physics.named.data.xpos["ee"]).sum() < 0.1:
                 self.physics.data.ctrl[0:5] = 0
@@ -301,6 +318,4 @@ class RobotEnv(gym.Env):
         """
         Close the connection to the robot.
         """
-        # self.physics.close()
-        # mujoco_env.MujocoEnv.close(self)
         cv2.destroyAllWindows()
