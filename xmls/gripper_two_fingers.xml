@@ -27,7 +27,7 @@
 <!--        <velocity kv="1"/>-->
 <!--        <position kp="10"/>-->
         <default class="GRIPPER">
-            <joint damping='10'/>
+            <joint damping='20'/>
         </default>
         <default class="KNUCKLE">
             <joint damping='5'/>
@@ -67,8 +67,8 @@
 
         <!-- ======= GRIPPER ======= -->
 
-        <body name="ee" pos="-0.37 0 0.1" quat="1 0 0 0">
-<!--        <body name="ee" pos="-.3 0 .3" quat="1 0 0 0">-->
+<!--        <body name="ee" pos="-0.37 0 0.1" quat="1 0 0 0">-->
+        <body name="ee" pos="-.17 0 .3" quat="1 0 0 0">
 <!--        <body name="ee" pos="-.3 0 .3" quat="0.4980973 0.0435779 0.0754791 0.8627299">-->
 <!--        <body name="ee" pos="-.3 0 .3" quat="0.7071068 0 0 0.7071068">-->
             <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />
@@ -83,27 +83,27 @@
 
                 <body name="robotiq_85_base_link" pos="0 0 0" quat="0.5 0.5 0.5 0.5 ">
                     <inertial pos="0.00021987 -2.3546e-10 0.030163"  quat="0.707058 0.00723369 0.00723345 0.707081" mass="0.30915" diaginertia="0.00030737 0.000289758 0.000199102" />
-                    <geom type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="robotiq_85_base_link_coarse" />
+                    <geom name="robotiq_85_base_link" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="robotiq_85_base_link_coarse" />
 
                     <body name="left_inner_knuckle" pos="0.0127 0 0.0693075">
                         <inertial pos="0.0170975 -3.93809e-10 0.0224918"   quat="0.947655 0 -0.319297 0" mass="0.0110931" diaginertia="5.59353e-06 3.96549e-06 1.88108e-06" />
-                        <geom type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
+                        <geom name="left_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
                         <joint name="base_to_lik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
 
                         <body name="left_inner_finger" pos="0.0345853 0 0.045497" >
                             <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
-                            <geom type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
+                            <geom name="left_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
                         </body>
                     </body>
 
                     <body name="right_inner_knuckle" pos="-0.0127 0 0.0693075" quat="0 0 0 1">
                         <inertial pos="0.0168606 3.93808e-10 0.02267"  quat="0.949317 0 -0.314322 0" mass="0.0110931" diaginertia="5.59353e-06 3.96549e-06 1.88108e-06" />
-                        <geom type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
+                        <geom name="right_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
                         <joint name="base_to_rik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
 
                         <body name="right_inner_finger" pos="0.034106 0 0.0458574">
                             <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
-                            <geom type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
+                            <geom name="right_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
                         </body>
                     </body>
                 </body>
@@ -129,7 +129,9 @@
 
         <body name="box_1" pos="0 0 0.2">
             <freejoint/>
-            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
+<!--            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
+            <geom name="box_1" type="box" size="0.02 0.02 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
+            <site name="target_site_1" type="box" size="0.02 0.02 0.2" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
         </body>
 
 
@@ -164,10 +166,5 @@
 <!--        <motor name="close_lik" joint='base_to_lik' ctrllimited="true" ctrlrange="-1 1" gear="0.2 0 0 0 0 0" />-->
 <!--        <motor name="close_rik" joint='base_to_rik' ctrllimited="true" ctrlrange="-1 1" gear="0.2 0 0 0 0 0" />-->
     </actuator>
-
-<!--     ======= SENSORS ======= -->
-    <sensor>
-<!--        <touch name="touch_target_1" site="target_site_1" />-->
-    </sensor>
 
 </mujoco>

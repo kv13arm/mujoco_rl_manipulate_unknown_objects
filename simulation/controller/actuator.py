@@ -1,6 +1,4 @@
 import gym
-import cv2
-import math
 import numpy as np
 from utils import transformations
 from dm_control.mujoco.wrapper.mjbindings import mjlib
@@ -15,20 +13,10 @@ class Actuator:
 
         self._sensor = RGBDSensor(robot=self.physics, config=config)
 
-        # Last gripper action
-        self.gripper_open = True
-
         self._workspace = {'lower': np.array([-0.5, -0.5, 0.1]),
                            'upper': np.array([0.5, 0.5, 0.5])}
         self._roll_rotation = {'lower': -np.pi / 4,
                                'upper': np.pi / 4}
-
-    def reset(self):
-        """
-        Reset the gripper to its open position.
-        """
-        # self.open_gripper(half_open=True)
-        self.gripper_open = True
 
     def _normalise_action(self, action):
         """
@@ -50,14 +38,9 @@ class Actuator:
             translation, rotation = self._clip_translation_vector(action[:3], action[3:4])
         return translation, rotation, action[-1]
 
-    def scale_control(self, qpos):
-        _low = np.r_[[-self.config.max_translation] * 3, [-self.config.max_rotation] * 2]
-        _high = -_low
-        # max_translation and max_rotation will be scaled to 1
-        _scaler = MinMaxScaler((-1, 1))
-        _scaler.fit(np.vstack((_low, _high)))
-        return _scaler.transform(qpos)
-        # return self._action_scaler.transform(qpos)
+    def scale_control(self, qpos, open_close):
+        controls = np.r_[qpos, open_close].reshape(1, -1)
+        return self._action_scaler.transform(controls).squeeze()[:5]
 
     def _get_current_pose(self):
         current_pos = self.physics.named.data.xpos["ee"]
@@ -121,52 +104,12 @@ class Actuator:
         otherwise, the gripper closes completely.
         :return: [bool] True if the gripper grasped an object, False otherwise
         """
-        # debug
-        # for _ in range(5):
-        #     self.physics.step()
-
-        self.gripper_open = True
-        # set the ctrl (motors) controlling the gripper left and right knuckle_link to -1
-        self.physics.data.ctrl[6:8] = -1
         # set the position of the gripper links when fully closed
         target_pos = [-0.4, -0.4]
+        # set the ctrl (motors) controlling the gripper left and right knuckle_link to -1
+        self.physics.data.ctrl[5:7] = -1
 
-        step = 0
-        camera_id = 3
-
-        while self.gripper_open:
-            self.physics.step()
-            step += 1
-
-            if self.config.show_obs:
-                self.physics.render()
-
-            img = []
-            for camera in range(camera_id):
-                rgb, _ = self._sensor.render_images(camera_id=camera,
-                                                       w_zoom=self.config.rendering_zoom_width,
-                                                       h_zoom=self.config.rendering_zoom_height)
-                img.append(rgb)
-
-            result = np.hstack(img)
-            cv2.imwrite(f'images6/0_{step}_close.png',  cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-            print(self.physics.data.qpos)
-            print('sensordata', self.physics.data.sensordata)
-            print('step', step)
-
-            # check if the object is securely grasped
-            object_securely_graspped = self.physics.data.sensordata[0] > self.config.grasp_tolerance
-            # check the gripper's links positions
-            gripper_fully_closed = np.all(np.abs(self.physics.data.qpos[5:7] -
-                                                 [target_pos]) < self.config.gripper_tolerance)
-            # if object_securely_graspped or gripper_fully_closed:
-            if gripper_fully_closed:
-                self.physics.data.ctrl[6:8] = 0
-
-                self.gripper_open = False
-                break
-
-        return object_securely_graspped
+        return target_pos
 
     def open_gripper(self, half_open=False):
         """
@@ -181,34 +124,55 @@ class Actuator:
         else:
             target_pos = [0.4, 0.4]
         # set the ctrl (motors) controlling the gripper left and right knuckle_link to 1
-        self.physics.data.ctrl[6:8] = 1
+        self.physics.data.ctrl[5:7] = 0.5
 
-        # step = 0
-        # camera_id = 3
+        return target_pos
 
-        while not self.gripper_open:
-            self.physics.step()
-            # step += 1
-            # print(self.physics.data.qpos)
-            # print('step', step)
-            # print("diff", np.abs(self.physics.data.qpos[5:7] -
-            #                              [target_pos]))
-            # img = []
-            # for camera in range(camera_id):
-            #     rgb, _ = self._sensor.render_images(camera_id=camera,
-            #                                            w_zoom=self.config.rendering_zoom_width,
-            #                                            h_zoom=self.config.rendering_zoom_height)
-            #     img.append(rgb)
-            #
-            # result = np.hstack(img)
-            # cv2.imwrite(f'images/{step}.png', cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-            # check the gripper's links positions
-            gripper_open = np.all(np.abs(self.physics.data.qpos[5:7] -
-                                         [target_pos]) < self.config.gripper_tolerance)
-            if gripper_open:
-                self.physics.data.ctrl[6:8] = 0
-                self.gripper_open = True
-                break
+    def check_grasp(self, object):
+        """
+        Check if the gripper is grasping an object.
+        :return: [bool] True if the gripper is grasping an object, False otherwise
+        """
+        finger_1_geom_names = ['left_inner_knuckle', 'left_inner_finger']
+        finger_2_geom_names = ['right_inner_knuckle', 'right_inner_finger']
+        object_geom_name = object
+
+        # get the geom ids from the names
+        finger_1_geom_ids = [
+            self.physics.named.model.geom_bodyid[x] for x in finger_1_geom_names
+        ]
+        finger_2_geom_ids = [
+            self.physics.named.model.geom_bodyid[x] for x in finger_2_geom_names
+        ]
+        object_geom_id = self.physics.named.model.geom_bodyid[object_geom_name]
+
+        # touch/contact detection flag
+        touch_finger_1 = False
+        touch_finger_2 = False
+
+        # int ncon: number of detected contacts
+        for i in range(self.physics.data.ncon):
+            # list of all detected contacts
+            contact = self.physics.data.contact[i]
+            # if the object is in the detected contact geom1
+            if self.physics.model.geom_bodyid[contact.geom1] == object_geom_id:
+                # whether the finger 1 in the detected contacts
+                if self.physics.model.geom_bodyid[contact.geom2] in finger_1_geom_ids:
+                    # result: finger 1 touched the object
+                    touch_finger_1 = True
+                if self.physics.model.geom_bodyid[contact.geom2] in finger_2_geom_ids:
+                    # finger 2 touched the object
+                    touch_finger_2 = True
+                    # if the object is in the detected contact geom2
+            elif self.physics.model.geom_bodyid[contact.geom2] == object_geom_id:
+                if self.physics.model.geom_bodyid[contact.geom1] in finger_1_geom_ids:
+                    # finger 1 touched the object
+                    touch_finger_1 = True
+                if self.physics.model.geom_bodyid[contact.geom1] in finger_2_geom_ids:
+                    # finger 2 touched the object
+                    touch_finger_2 = True
+        if touch_finger_1 and touch_finger_2:
+            return True
 
     def get_gripper_width(self):
         """

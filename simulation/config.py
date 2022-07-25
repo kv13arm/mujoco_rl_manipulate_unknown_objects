@@ -22,10 +22,10 @@ class Config:
     # actuator parameters
     max_rotation: float = 0.15
     max_translation: float = 0.05
-    grasp_tolerance: float = 0.2
-    gripper_tolerance: float = 0.03
+    grasp_tolerance: float = 0.03
+    pos_tolerance: float = 0.002
     include_roll: bool = True
-    ik_step_size: float = 0.0025  # max increment size of each iteration : 0.25cm
+
 
     # simulation parameters
     max_steps: int = 1000

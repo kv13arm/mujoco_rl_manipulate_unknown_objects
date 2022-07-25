@@ -19,8 +19,6 @@ def _reset(robot, actuator):
     """
     # constant actuator signal
     robot.reset()
-    # reset the actuator
-    actuator.reset()
     # gravity compensation
     mg = -(0.438 * robot.model.opt.gravity[2])
     robot.named.data.xfrc_applied["ee", 2] = mg
@@ -99,6 +97,7 @@ class RobotEnv(gym.Env):
         self.episode_rewards = np.zeros(self.config.time_horizon)
         self.status = RobotEnv.Status.RUNNING
         self.obs = self.get_observation()
+        self.gripper_open = True
 
         return self.obs
 
@@ -108,64 +107,111 @@ class RobotEnv(gym.Env):
         :param action:
         :return:
         """
-        self.pos_reached = False
+        pos_reached = {"target": False,
+                       "initial": False,
+                       "fail": False}
         init_qpos = self.physics.data.qpos[:5].copy()
+        open_close = action[-1]
 
         target_qpos = self._actuator.get_target_pose(action)
 
         step_limit = self.config.max_steps
 
-        while not self.pos_reached:
+        while not pos_reached["target"]:
             current_qpos = self.physics.data.qpos[:5]
-            self.physics.data.ctrl[0:5] = self._actuator.scale_control([target_qpos - current_qpos])
+            self.physics.data.ctrl[0:5] = self._actuator.scale_control(target_qpos - current_qpos, open_close)
             self.physics.step()
-            step_limit -= 1
-            print("Iteration: ", 1000 - step_limit)
             if self.config.show_obs:
                 self.render()
+            step_limit -= 1
+            print("Iteration: ", 1000 - step_limit)
 
             deltas = abs(current_qpos - target_qpos)
             print("qpos difference:", deltas)
-            if max(deltas) < 0.002:
-                self.pos_reached = True
+            if max(deltas) < self.config.pos_tolerance:
+                pos_reached["target"] = True
                 self.physics.data.ctrl[0:5] = 0
             if step_limit == 0:
                 print("Target not reached. Returning to initial position.")
-                target_qpos = init_qpos
+                target_qpos = init_qpos[:5]
 
                 for i in range(self.config.max_steps):
                     current_qpos = self.physics.data.qpos[:5]
-                    self.physics.data.ctrl[0:5] = self._actuator.scale_control([target_qpos - current_qpos])
+                    self.physics.data.ctrl[0:5] = self._actuator.scale_control(target_qpos - current_qpos, open_close)
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
                     deltas = abs(current_qpos - target_qpos)
                     print("qpos difference:", deltas)
-                    if max(deltas) < 0.002:
-                        self.pos_reached = True
+                    if max(deltas) < self.config.pos_tolerance:
+                        pos_reached["initial"] = True
                         self.physics.data.ctrl[0:5] = 0
                         break
-                if not self.pos_reached:
-                    self.status = RobotEnv.Status.TIME_LIMIT
+                if not pos_reached["target"] and not pos_reached["initial"]:
+                    pos_reached["fail"] = True
+                    self.status = RobotEnv.Status.FAIL
 
+        if pos_reached["target"]:
+            if open_close > 0. and not self.gripper_open:
+                target_qpos = self._actuator.open_gripper()
+                while not self.gripper_open:
+                    deltas = abs(target_qpos - self.physics.data.qpos[5:7])
+                    print(deltas)
+                    self.physics.step()
+                    if self.config.show_obs:
+                        self.render()
+                    if max(deltas) < self.config.grasp_tolerance:
+                        self.physics.data.ctrl[5:7] = 0
+                        self.gripper_open = True
+            elif open_close < 0. and self.gripper_open:
+                target_qpos = self._actuator.close_gripper()
+                while self.gripper_open:
+                    deltas = abs(target_qpos - self.physics.data.qpos[5:7])
+                    # check if the object is securely grasped
+                    # object_securely_graspped = self.physics.data.sensordata[0] > self.config.grasp_tolerance
+                    object_graspped = self._actuator.check_grasp("box_1")
+                    print("Object graspped: ", object_graspped)
+                    self.physics.step()
+                    if self.config.show_obs:
+                        self.render()
+                    if max(deltas) < self.config.grasp_tolerance:
+                        self.physics.data.ctrl[5:7] = 0
+                        self.gripper_open = False
 
-        print("Final position: ", self.physics.named.data.xpos["ee"])
-        # print("Target position: ", target_pos)
-        print("Final position: ", self.physics.named.data.xquat["ee"])
-        # print("Target position: ", target_ori)
+                    if object_graspped:
+                        self.gripper_open = False
 
+        # self.status = RobotEnv.Status.SUCCESS
+        # print("Final position: ", self.physics.named.data.xpos["ee"])
+        # # print("Target position: ", target_pos)
+        # print("Final position: ", self.physics.named.data.xquat["ee"])
+        # # print("Target position: ", target_ori)
+        # print("Position reached: ", pos_reached)
 
-    def close_gripper(self):
-        # self._gripper_open = False
-        # closed_pos = [1.12810781, -0.59798289, -0.53003607]
-        # for i in range(2):
-        #     for j in range(3):
-        #         self.physics.data.qpos[i * 4 + j] = closed_pos[j]
-        # self.physics.step()
-        self._actuator.close_gripper()
+        new_obs = self.get_observation()
 
-    # def open_gripper(self):
-    #     self._actuator.open_gripper(half_open=False)
+        # reward, self.status = self._reward_fn(self.obs, action, new_obs)
+        # self.episode_rewards[self.episode_step] = reward
+
+        if self.status != RobotEnv.Status.RUNNING:
+            done = True
+        elif self.episode_step == self.time_horizon - 1:
+            done, self.status = True, RobotEnv.Status.TIME_LIMIT
+        else:
+            done = False
+
+        if done:
+            self._trigger_event(RobotEnv.Events.END_OF_EPISODE, self)
+
+        self.episode_step += 1
+        self.obs = new_obs
+
+        # return self.obs, reward, done, {"is_success": self.status==RobotEnv.Status.SUCCESS,
+        #                                 "episode_step": self.episode_step,
+        #                                 "episode_rewards": self.episode_rewards,
+        #                                 "status": self.status,
+        #                                 "position_reached": pos_reached,
+        #                                 "object_grasped": object_graspped}
 
     def get_observation(self):
         """
@@ -231,91 +277,8 @@ class RobotEnv(gym.Env):
             cv2.waitKey(1)
             time.sleep(0.01)
 
-    def move_to_pose(self, translation, rotation, steps=100):
-        """
-        Compute joint angles and move the robot to the given pose.
-        :param translation: [np.array] translation of the robot in the local frame
-        :param rotation: [np.array] rotation of the robot in the local frame
-        :param steps: [int] number of maximum steps to move the robot
-        """
-
-        if not self.config.include_roll:
-            rotation = np.array([0., 0., rotation[0]])
-        else:
-            rotation = np.array([rotation[0], 0., rotation[1]])
-        current_qpos = self.physics.data.qpos[0:5]
-        camera_id = 3
-        for i in range(steps):
-            self.physics.step()
-            current_pos = self.physics.named.data.xpos["ee"]
-            current_ori_quat = self.physics.named.data.xquat["ee"]
-            yaw, pitch, roll = transformations.euler_from_quaternion(current_ori_quat,
-                                                                     axes=(0, 0, 0, 1))
-            current_ori = np.array([roll, pitch, yaw])
-
-            T_world_old = transformations.compose_matrix(
-                angles=current_ori, translate=current_pos)
-
-            T_old_to_new = transformations.compose_matrix(
-                angles=rotation, translate=translation)
-
-            T_world_new = np.dot(T_world_old, T_old_to_new)
-
-            position = T_world_new[:3, 3]
-            # orientation = current_ori + rotation
-            orientation = np.array(transformations.euler_from_matrix(T_world_new))
-            target_pos, target_ori = self._enforce_constraints(position, orientation)
-
-            err_pos = target_pos - current_pos
-            err_ori = target_ori - current_ori
-
-            # compute the Jacobian
-            jac_pos = np.zeros((3, self.physics.model.nv))
-            jac_rot = np.zeros((3, self.physics.model.nv))
-
-            mjlib.mj_jacBody(self.physics.model.ptr,
-                             self.physics.data.ptr,
-                             jac_pos,
-                             jac_rot,
-                             self.physics.model.name2id('ee', 'body'))
-
-            J_full = np.vstack([jac_pos[:, :5], jac_rot[:, :5]])
-            J_inv = np.linalg.pinv(J_full)
-
-            # compute the joint angles
-            qpos_next = np.dot(J_inv, np.hstack([[err_pos], [err_ori]]).T).T.squeeze()
-            self.physics.data.qpos[0:5] = self.physics.data.qpos[0:5] + qpos_next
-            # ori_test = current_ori + rotation
-            # qpos_test = np.r_[target_pos, ori_test[0], ori_test[2]]
-            # self.physics.data.qpos[0:5] = qpos_test
-
-            self.physics.data.ctrl[0:5] = self.physics.data.qpos[0:5]
-
-            steps -= 1
-            print(f"Step {i}")
-            if self.config.show_obs:
-                self.render()
-            img = []
-            for camera in range(camera_id):
-                rgb, _ = self._sensor.render_images(camera_id=camera,
-                                                    w_zoom=self.config.rendering_zoom_width,
-                                                    h_zoom=self.config.rendering_zoom_height)
-                img.append(rgb)
-
-            result = np.hstack(img)
-            cv2.imwrite(f'images6/1_{i}_move_x.png', cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-            # self.physics.step()
-            if np.abs(target_pos - self.physics.named.data.xpos["ee"]).sum() < 0.1:
-                self.physics.data.ctrl[0:5] = 0
-                break
-        if steps == 0:
-            print("Could not move to pose")
-            self.physics.data.ctrl[0:5] = current_qpos
-            self.physics.step()
-            self._actuator.open_gripper()
-
     def close(self):
         """
-        Close the connection to the robot.
+        Close rendering window.
         """
         cv2.destroyAllWindows()
