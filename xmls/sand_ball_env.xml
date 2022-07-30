@@ -1,0 +1,113 @@
+<mujoco model="sand_ball_env">
+    <compiler angle="radian" meshdir="meshes" inertiafromgeom="true" />
+    <option timestep="2e-3" iterations="100" tolerance="1e-10" impratio="10" gravity="0 0 -9.81" cone="elliptic"/>
+
+    <size njmax="500" nconmax="1000" />
+
+    <visual>
+        <map znear="0.001" />
+    </visual>
+
+    <default>
+        <site rgba="0.8 0.6 0.7 0.3" type="ellipsoid"/>
+        <geom contype='1' conaffinity='1' margin="0.001" solimp="0.9 0.95 0.001 0.5 2" solref = "0.007 1" condim="4" type="mesh"/>
+        <joint armature="0.01" damping=".1"/>
+        <light castshadow="false" diffuse="1 1 1" />
+        <motor gear="75"/>
+        <default class="GRIPPER">
+            <joint damping='20'/>
+        </default>
+        <default class="KNUCKLE">
+            <joint damping='5'/>
+        </default>
+    </default>
+
+    <asset>
+        <mesh file="robotiq_85_base_link_coarse.stl" />
+        <mesh file="inner_knuckle_coarse.stl" />
+        <mesh file="inner_finger_coarse.stl" />
+        <mesh file="sand_ball.stl" />
+        <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="512" height="512"/>
+        <texture name="grid" type="2d" builtin="checker" width="300" height="300" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+        <material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0"/>
+        <material name="Light" specular="0" shininess="0.6" reflectance="0.9" rgba="0.5 0.5 1 1" emission="0.7" />
+        <material name="GriMat" specular="0.9" shininess="0.5" reflectance="0" rgba="0.1 0.1 0.1 1" emission="0.1" />
+    </asset>
+
+    <!-- ======= WORLD ======= -->
+    <worldbody>
+
+        <!-- ======= CAMERAS ======= -->
+        <body pos="0 -2 0.3" euler="4.71238898 3.14159265 3.14159265">
+                <camera name="workbench_camera" euler="0 0 0" fovy="43"/>
+        </body>
+
+        <body pos="0 0 2" euler="0 0 0">
+                <camera name="upper_camera" euler="0 0 0" fovy="41" />
+        </body>
+
+        <!-- ======= LIGHTS ======= -->
+        <light directional="true" pos="-0.5 0.5 3" dir="0 0 -1" />
+        <light directional="false" pos="-0.5 0.5 1.5" dir="0 -1 0" />
+
+        <!-- ======= FLOOR ======= -->
+        <geom name="floor" size="5 5 .01" type="plane" material="grid" condim="3"/>
+
+        <!-- ======= GRIPPER ======= -->
+
+        <body name="ee" pos="-0.4 0 0.3" quat="1 0 0 0">
+            <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />
+            <camera name="gripper_camera" pos="0.1 0 0.05" euler="0 -1.5707963 -1.5707963" fovy="135" />
+            <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-1 1" />
+            <joint name="gripper_y" class="GRIPPER" pos="0 0 0" type="slide" axis="0 1 0" limited="true" range="-1 1" />
+            <joint name="gripper_z" class="GRIPPER" pos="0 0 0" type="slide" axis="0 0 1" limited="true" range="-1 1" />
+            <joint name="gripper_roll" class="GRIPPER" pos="0 0 0" axis="1 0 0" limited="true" range="-3.14159 3.14159" />
+            <joint name="gripper_yaw" class="GRIPPER" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14159 3.14159" />
+
+                <body name="robotiq_85_base_link" pos="0 0 0" quat="0.5 0.5 0.5 0.5 ">
+                    <inertial pos="0.00021987 -2.3546e-10 0.030163"  quat="0.707058 0.00723369 0.00723345 0.707081" mass="0.30915" diaginertia="0.00030737 0.000289758 0.000199102" />
+                    <geom name="robotiq_85_base_link" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="robotiq_85_base_link_coarse" />
+
+                    <body name="left_inner_knuckle" pos="0.0127 0 0.0693075">
+                        <inertial pos="0.0170975 -3.93809e-10 0.0224918"   quat="0.947655 0 -0.319297 0" mass="0.0110931" diaginertia="5.59353e-06 3.96549e-06 1.88108e-06" />
+                        <geom name="left_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
+                        <joint name="base_to_lik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
+
+                        <body name="left_inner_finger" pos="0.0345853 0 0.0458574" >
+                            <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
+                            <geom name="left_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
+                        </body>
+                    </body>
+
+                    <body name="right_inner_knuckle" pos="-0.0127 0 0.0693075" quat="0 0 0 1">
+                        <inertial pos="0.0168606 3.93808e-10 0.02267"  quat="0.949317 0 -0.314322 0" mass="0.0110931" diaginertia="5.59353e-06 3.96549e-06 1.88108e-06" />
+                        <geom name="right_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
+                        <joint name="base_to_rik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
+
+                        <body name="right_inner_finger" pos="0.0345853 0 0.0458574">
+                            <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
+                            <geom name="right_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
+                        </body>
+                    </body>
+                </body>
+        </body>
+
+        <!-- ======= OBJECT ======= -->
+        <body name="object" pos="-0.5 0.3 0">
+            <freejoint/>
+            <geom name="object" type="mesh" mesh="sand_ball" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
+        </body>
+
+    </worldbody>
+
+    <actuator>
+        <motor name="move_x" joint='gripper_x' ctrllimited="true" ctrlrange="-1 1" />
+        <motor name="move_y" joint='gripper_y' ctrllimited="true" ctrlrange="-1 1" />
+        <motor name="move_z" joint='gripper_z' ctrllimited="true" ctrlrange="-1 1" />
+        <motor name='roll' joint='gripper_roll' ctrllimited="true" ctrlrange="-1 1" />
+        <motor name='yaw' joint='gripper_yaw' ctrllimited="true" ctrlrange="-1 1" />
+        <motor name="close_lik" joint='base_to_lik' ctrllimited="true" ctrlrange="-1 1" gear="20" />
+        <motor name="close_rik" joint='base_to_rik' ctrllimited="true" ctrlrange="-1 1" gear="20" />
+    </actuator>
+
+</mujoco>

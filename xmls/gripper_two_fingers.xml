@@ -38,7 +38,7 @@
         <mesh file="robotiq_85_base_link_coarse.stl" />
         <mesh file="inner_knuckle_coarse.stl" />
         <mesh file="inner_finger_coarse.stl" />
-        <mesh file="object1.stl" />
+        <mesh file="acorn.stl" />
         <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="512" height="512"/>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
         <material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0"/>
@@ -67,12 +67,12 @@
 
         <!-- ======= GRIPPER ======= -->
 
-<!--        <body name="ee" pos="-0.37 0 0.1" quat="1 0 0 0">-->
-        <body name="ee" pos="-.17 0 .3" quat="1 0 0 0">
+        <body name="ee" pos="-0.37 0 0.1" quat="1 0 0 0">
+<!--        <body name="ee" pos="-.17 0 .3" quat="1 0 0 0">-->
 <!--        <body name="ee" pos="-.3 0 .3" quat="0.4980973 0.0435779 0.0754791 0.8627299">-->
 <!--        <body name="ee" pos="-.3 0 .3" quat="0.7071068 0 0 0.7071068">-->
             <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />
-            <camera name="gripper_camera" pos="0.06 0 0.05" euler="0 -1.5707963 -1.5707963" fovy="90" />
+            <camera name="gripper_camera" pos="0.1 0 0.05" euler="0 -1.5707963 -1.5707963" fovy="135" />
 <!--            <camera name="gripper_camera" pos="0.06 0.05 0.08" euler="0 -1.5707963 -1.5707963" fovy="90" />-->
 <!--            <camera name="gripper_camera2" pos="0.06 -0.05 0.08" euler="0 -1.5707963 -1.5707963" fovy="90" />-->
             <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-1 1" />
@@ -90,7 +90,7 @@
                         <geom name="left_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
                         <joint name="base_to_lik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
 
-                        <body name="left_inner_finger" pos="0.0345853 0 0.045497" >
+                        <body name="left_inner_finger" pos="0.0345853 0 0.0458574" >
                             <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
                             <geom name="left_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
                         </body>
@@ -101,7 +101,7 @@
                         <geom name="right_inner_knuckle" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_knuckle_coarse" />
                         <joint name="base_to_rik" class="KNUCKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1 1" />
 
-                        <body name="right_inner_finger" pos="0.034106 0 0.0458574">
+                        <body name="right_inner_finger" pos="0.0345853 0 0.0458574">
                             <inertial pos="0.00602756 0 0.00669926"  quat="0.699065 0.106339 0.106339 0.699065" mass="0.00724255" diaginertia="1.70064e-06 1.58577e-06 3.69621e-07" />
                             <geom name="right_inner_finger" type="mesh" material="GriMat" friction="0.8 0.8 0.8" mesh="inner_finger_coarse" />
                         </body>
@@ -127,12 +127,19 @@
 <!--            <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />-->
 <!--        </body>-->
 
-        <body name="box_1" pos="0 0 0.2">
-            <freejoint/>
+<!--        <body name="box_1" pos="0 0 0.2">-->
+<!--            <freejoint/>-->
+<!--&lt;!&ndash;            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;-->
 <!--            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
-            <geom name="box_1" type="box" size="0.02 0.02 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
-            <site name="target_site_1" type="box" size="0.02 0.02 0.2" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
-        </body>
+<!--&lt;!&ndash;            <site name="target_site_1" type="box" size="0.2 0.2 0.2" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;&ndash;&gt;-->
+<!--        </body>-->
+<!--        -->
+<!--         <body name="box_1" pos="0 0.05 0">-->
+<!--            <freejoint/>-->
+<!--&lt;!&ndash;            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;-->
+<!--            <geom name="box_1" type="mesh" mesh="acorn" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
+<!--&lt;!&ndash;            <site name="target_site_1" type="mesh" mesh="acorn" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;&ndash;&gt;-->
+<!--        </body>-->
 
 
     </worldbody>

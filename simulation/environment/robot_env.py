@@ -4,10 +4,8 @@ import functools
 import numpy as np
 from enum import Enum
 from dm_control import mujoco
-from dm_control.mujoco.wrapper.mjbindings import mjlib
 from simulation.controller.sensor import RGBDSensor
 from simulation.controller.actuator import Actuator
-from utils import transformations
 import cv2
 
 
@@ -117,39 +115,42 @@ class RobotEnv(gym.Env):
 
         step_limit = self.config.max_steps
 
-        while not pos_reached["target"]:
+        for i in range(self.config.max_steps):
             current_qpos = self.physics.data.qpos[:5]
             self.physics.data.ctrl[0:5] = self._actuator.scale_control(target_qpos - current_qpos, open_close)
             self.physics.step()
             if self.config.show_obs:
                 self.render()
+            print("Iteration: ", i)
             step_limit -= 1
-            print("Iteration: ", 1000 - step_limit)
-
             deltas = abs(current_qpos - target_qpos)
             print("qpos difference:", deltas)
             if max(deltas) < self.config.pos_tolerance:
                 pos_reached["target"] = True
                 self.physics.data.ctrl[0:5] = 0
-            if step_limit == 0:
-                print("Target not reached. Returning to initial position.")
-                target_qpos = init_qpos[:5]
+                break
 
-                for i in range(self.config.max_steps):
-                    current_qpos = self.physics.data.qpos[:5]
-                    self.physics.data.ctrl[0:5] = self._actuator.scale_control(target_qpos - current_qpos, open_close)
-                    self.physics.step()
-                    if self.config.show_obs:
-                        self.render()
-                    deltas = abs(current_qpos - target_qpos)
-                    print("qpos difference:", deltas)
-                    if max(deltas) < self.config.pos_tolerance:
-                        pos_reached["initial"] = True
-                        self.physics.data.ctrl[0:5] = 0
-                        break
-                if not pos_reached["target"] and not pos_reached["initial"]:
-                    pos_reached["fail"] = True
-                    self.status = RobotEnv.Status.FAIL
+        if step_limit == 0:
+            print("Target not reached. Returning to initial position.")
+            target_qpos = init_qpos[:5]
+
+            for i in range(self.config.max_steps):
+                current_qpos = self.physics.data.qpos[:5]
+                self.physics.data.ctrl[0:5] = self._actuator.scale_control(target_qpos - current_qpos, open_close)
+                self.physics.step()
+                if self.config.show_obs:
+                    self.render()
+
+                deltas = abs(current_qpos - target_qpos)
+                print("qpos difference:", deltas)
+                if max(deltas) < self.config.pos_tolerance:
+                    pos_reached["initial"] = True
+                    self.physics.data.ctrl[0:5] = 0
+                    break
+
+        if not pos_reached["target"] and not pos_reached["initial"]:
+            pos_reached["fail"] = True
+            self.status = RobotEnv.Status.FAIL
 
         if pos_reached["target"]:
             if open_close > 0. and not self.gripper_open:
@@ -169,8 +170,8 @@ class RobotEnv(gym.Env):
                     deltas = abs(target_qpos - self.physics.data.qpos[5:7])
                     # check if the object is securely grasped
                     # object_securely_graspped = self.physics.data.sensordata[0] > self.config.grasp_tolerance
-                    object_graspped = self._actuator.check_grasp("box_1")
-                    print("Object graspped: ", object_graspped)
+                    object_graspped = self._actuator.check_grasp("object")
+                    print("Object graspped: ", object_graspped == 3)
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
@@ -178,15 +179,14 @@ class RobotEnv(gym.Env):
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = False
 
-                    if object_graspped:
+                    if object_graspped == 3:
                         self.gripper_open = False
 
-        # self.status = RobotEnv.Status.SUCCESS
-        # print("Final position: ", self.physics.named.data.xpos["ee"])
-        # # print("Target position: ", target_pos)
-        # print("Final position: ", self.physics.named.data.xquat["ee"])
-        # # print("Target position: ", target_ori)
-        # print("Position reached: ", pos_reached)
+        print("Final position: ", self.physics.named.data.xpos["ee"])
+        # print("Target position: ", target_pos)
+        print("Final position: ", self.physics.named.data.xquat["ee"])
+        # print("Target position: ", target_ori)
+        print("Position reached: ", pos_reached)
 
         new_obs = self.get_observation()
 
@@ -195,7 +195,7 @@ class RobotEnv(gym.Env):
 
         if self.status != RobotEnv.Status.RUNNING:
             done = True
-        elif self.episode_step == self.time_horizon - 1:
+        elif self.episode_step == self.config.time_horizon - 1:
             done, self.status = True, RobotEnv.Status.TIME_LIMIT
         else:
             done = False
@@ -223,7 +223,7 @@ class RobotEnv(gym.Env):
             obs = rgb
         else:
             sensor_pad = np.zeros(self._sensor.state_space.shape[:2])
-            sensor_pad[0][0] = self._actuator.get_gripper_width()
+            sensor_pad[0][0] = self._actuator.check_grasp("object")
             obs = np.dstack((rgb, depth, sensor_pad)).astype(np.float32)
 
         if self.config.show_obs:

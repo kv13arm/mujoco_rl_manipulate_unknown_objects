@@ -13,8 +13,8 @@ class Actuator:
 
         self._sensor = RGBDSensor(robot=self.physics, config=config)
 
-        self._workspace = {'lower': np.array([-0.5, -0.5, 0.1]),
-                           'upper': np.array([0.5, 0.5, 0.5])}
+        self._workspace = {'lower': np.array([-0.6, -0.6, 0.1]),
+                           'upper': np.array([0.6, 0.6, 0.5])}
         self._roll_rotation = {'lower': -np.pi / 4,
                                'upper': np.pi / 4}
 
@@ -171,8 +171,14 @@ class Actuator:
                 if self.physics.model.geom_bodyid[contact.geom1] in finger_2_geom_ids:
                     # finger 2 touched the object
                     touch_finger_2 = True
-        if touch_finger_1 and touch_finger_2:
-            return True
+        if not touch_finger_1 and not touch_finger_2:
+            return 0
+        elif touch_finger_1 and not touch_finger_2:
+            return 1
+        elif not touch_finger_1 and touch_finger_2:
+            return 2
+        else:
+            return 3
 
     def get_gripper_width(self):
         """
