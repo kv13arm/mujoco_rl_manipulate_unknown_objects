@@ -7,7 +7,7 @@ class Config:
     """
     Configuration for the simulation.
     """
-    seed: int = 42  # OK
+    seed: int = 42
     xml_path: str = Path(__file__).resolve().parent.parent.as_posix() + r"/xmls/acorn_env.xml"  # OK
 
     # camera parameters

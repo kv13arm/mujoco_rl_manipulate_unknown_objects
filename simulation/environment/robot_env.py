@@ -3,13 +3,14 @@ import time
 import functools
 import numpy as np
 from enum import Enum
+from gym.utils import seeding
 from dm_control import mujoco
 from simulation.controller.sensor import RGBDSensor
 from simulation.controller.actuator import Actuator
 import cv2
 
 
-def _reset(robot, actuator):
+def _reset(robot):
     """
     Reset the robot to its initial state.
     :param robot: the robot to reset
@@ -46,12 +47,8 @@ class RobotEnv(gym.Env):
                            RobotEnv.Events.CHECKPOINT: []}
         self.register_events()
         self.setup_spaces()
-
-    def set_random_seed(self):
-        """
-        Set the random seed for the environment.
-        """
-        np.random.seed(self.config.seed)
+        self.np_random = self.seed()
+        self.target_direction = self._get_direction()
 
     def register_events(self):
         """
@@ -85,6 +82,16 @@ class RobotEnv(gym.Env):
         """
         self._callbacks[event].append((fn, args, kwargs))
 
+    def _get_direction(self):
+        """
+        Return the target direction vector.
+        :return: [np.array] the target direction vector
+        """
+        # generate a random angle for the target direction vector
+        theta = np.round(self.np_random.uniform(0, 2 * np.pi), 2)
+
+        return np.array([np.cos(theta), np.sin(theta)])
+
     def reset(self):
         """
         Reset the environment.
@@ -108,6 +115,10 @@ class RobotEnv(gym.Env):
         pos_reached = {"target": False,
                        "initial": False,
                        "fail": False}
+
+        init_obj_pos = self.physics.named.data.xpos["object"].copy()
+        total_distance = None
+
         init_qpos = self.physics.data.qpos[:5].copy()
         open_close = action[-1]
 
@@ -169,7 +180,6 @@ class RobotEnv(gym.Env):
                 while self.gripper_open:
                     deltas = abs(target_qpos - self.physics.data.qpos[5:7])
                     # check if the object is securely grasped
-                    # object_securely_graspped = self.physics.data.sensordata[0] > self.config.grasp_tolerance
                     object_graspped = self._actuator.check_grasp("object")
                     print("Object graspped: ", object_graspped == 3)
                     self.physics.step()
@@ -188,9 +198,11 @@ class RobotEnv(gym.Env):
         # print("Target position: ", target_ori)
         print("Position reached: ", pos_reached)
 
+        final_obj_pos = self.physics.named.data.xpos["object"]
+
         new_obs = self.get_observation()
 
-        # reward, self.status = self._reward_fn(self.obs, action, new_obs)
+        # reward, self.status = self._reward_fn(self.obs, new_obs, init_obj_pos, final_obj_pos)
         # self.episode_rewards[self.episode_step] = reward
 
         if self.status != RobotEnv.Status.RUNNING:
@@ -202,6 +214,7 @@ class RobotEnv(gym.Env):
 
         if done:
             self._trigger_event(RobotEnv.Events.END_OF_EPISODE, self)
+            total_distance = np.linalg.norm(final_obj_pos)
 
         self.episode_step += 1
         self.obs = new_obs
@@ -211,7 +224,8 @@ class RobotEnv(gym.Env):
         #                                 "episode_rewards": self.episode_rewards,
         #                                 "status": self.status,
         #                                 "position_reached": pos_reached,
-        #                                 "object_grasped": object_graspped}
+        #                                 "object_grasped": object_graspped,
+        #                                 "total_distance": total_distance}
 
     def get_observation(self):
         """
@@ -219,11 +233,13 @@ class RobotEnv(gym.Env):
         :return: [np.array] the observation
         """
         rgb, depth = self._sensor.render_images(camera_id="gripper_camera")
+        sensor_pad = np.zeros(self._sensor.state_space.shape[:2])
+        sensor_pad[0][0] = self._actuator.check_grasp("object")
+        sensor_pad[0][1] = self._actuator.pheromone_level()
+
         if not self.config.full_observation:
-            obs = rgb
+            obs = np.dstack((rgb, sensor_pad)).astype(np.float32)
         else:
-            sensor_pad = np.zeros(self._sensor.state_space.shape[:2])
-            sensor_pad[0][0] = self._actuator.check_grasp("object")
             obs = np.dstack((rgb, depth, sensor_pad)).astype(np.float32)
 
         if self.config.show_obs:
@@ -276,6 +292,16 @@ class RobotEnv(gym.Env):
             cv2.imshow("Camera", cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
             cv2.waitKey(1)
             time.sleep(0.01)
+
+    def seed(self, seed=None):
+        """
+        Set the random seed for the environment.
+        :param seed: the random seed
+        """
+        if seed is None:
+            seed = self.config.seed
+        self.np_random, seed = seeding.np_random(seed)
+        return self.np_random
 
     def close(self):
         """

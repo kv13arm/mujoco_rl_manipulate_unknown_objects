@@ -14,12 +14,12 @@ class RGBDSensor:
         :return: [gym.spaces.Box] observation space
         """
         if not self.config.full_observation:
-            # RGB output
+            # RGB + contact info and pheromone info
             self.state_space = gym.spaces.Box(low=0, high=255,
-                                              shape=(self.config.height_capture, self.config.width_capture, 3),
-                                              dtype=np.uint8)
+                                              shape=(self.config.height_capture, self.config.width_capture, 4),
+                                              dtype=np.float32)
         else:
-            # RGB + Depth + gripper width
+            # RGB + Depth + contact info and pheromone info
             self.state_space = gym.spaces.Box(low=0, high=255,
                                               shape=(self.config.height_capture, self.config.width_capture, 5),
                                               dtype=np.float32)

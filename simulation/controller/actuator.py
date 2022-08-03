@@ -192,6 +192,16 @@ class Actuator:
 
         return (left_finger_pos + right_finger_pos) / 1.6
 
+    def pheromone_level(self):
+        """
+        Get the current pheromone level of the environment.
+        :return: [float] the current pheromone level of the environment
+        """
+        target_dir = self.physics.target_direction
+        ee_pos = self.physics.named.data.xpos["ee"]
+        project_ee = (np.dot(ee_pos, target_dir) / np.linalg.norm(target_dir) ** 2) * target_dir
+        return -np.linalg.norm(project_ee - ee_pos)
+
     def setup_action_space(self):
         """
         Set up the continuous action space.

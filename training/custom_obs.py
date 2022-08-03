@@ -67,7 +67,7 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
 
         self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
 
-    def forward(self, observations: th.Tensor, num_direct_features: int = 1) -> th.Tensor:
+    def forward(self, observations: th.Tensor, num_direct_features: int = 2) -> th.Tensor:
 
         # take last channel as direct features
         other_features = nn.Flatten(observations[..., -1])
