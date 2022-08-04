@@ -1,6 +1,7 @@
 import copy
 import gym
 import numpy as np
+from utils.utils import transform_depth
 
 
 class RGBDSensor:
@@ -43,12 +44,7 @@ class RGBDSensor:
                                                   height=int(self.config.height_capture * h_zoom),
                                                   depth=True))
 
-        # For debugging
-        # depth -= depth.min()
-        # # Scale by 2 mean distances of near rays.
-        # depth /= 2 * depth[depth <= 1].mean()
-        # # Scale to [0, 255]
-        # pixels = 255 * np.clip(depth, 0, 1)
-        # cv2.imwrite(f"depth_{camera}.png", pixels)
+        # transform depth to uint8
+        depth = transform_depth(depth)
 
-        return rgb.astype(np.uint8), depth.astype(np.float32)
+        return rgb, depth

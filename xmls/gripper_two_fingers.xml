@@ -63,7 +63,7 @@
         <light directional="false" pos="-0.5 0.5 1.5" dir="0 -1 0" />
 
         <!-- ======= FLOOR ======= -->
-        <geom name="floor" size="5 5 .01" type="plane" material="grid" condim="3"/>
+        <geom name="floor" size="50 50 .01" type="plane" material="grid" condim="3"/>
 
         <!-- ======= GRIPPER ======= -->
 

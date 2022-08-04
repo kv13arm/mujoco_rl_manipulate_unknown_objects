@@ -51,7 +51,7 @@
         <light directional="false" pos="-0.5 0.5 1.5" dir="0 -1 0" />
 
         <!-- ======= FLOOR ======= -->
-        <geom name="floor" size="5 5 .01" type="plane" material="grid" condim="3"/>
+        <geom name="floor" size="50 50 .01" type="plane" material="grid" condim="3"/>
 
         <!-- ======= GRIPPER ======= -->
 
@@ -93,9 +93,9 @@
         </body>
 
         <!-- ======= OBJECT ======= -->
-        <body name="object" pos="-0.5 0.3 0">
+        <body name="object" pos="0.1 0 0">
             <freejoint/>
-            <geom name="object" type="mesh" mesh="sand_ball" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
+            <geom name="object" pos="-0.6 0.3 0" type="mesh" mesh="sand_ball" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
         </body>
 
     </worldbody>

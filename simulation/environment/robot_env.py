@@ -1,86 +1,37 @@
 import gym
 import time
-import functools
 import numpy as np
 from enum import Enum
 from gym.utils import seeding
 from dm_control import mujoco
 from simulation.controller.sensor import RGBDSensor
 from simulation.controller.actuator import Actuator
+from simulation.environment.reward import Reward, IntrinsicReward
 import cv2
 
 
-def _reset(robot):
-    """
-    Reset the robot to its initial state.
-    :param robot: the robot to reset
-    :param actuator: the actuator to reset
-    """
-    # constant actuator signal
-    robot.reset()
-    # gravity compensation
-    mg = -(0.438 * robot.model.opt.gravity[2])
-    robot.named.data.xfrc_applied["ee", 2] = mg
-
-
 class RobotEnv(gym.Env):
-    class Events(Enum):
-        START_EPISODE = 0
-        END_EPISODE = 1
-        CLOSE = 2
-        CHECKPOINT = 3
 
     class Status(Enum):
         RUNNING = 0
-        SUCCESS = 1
-        FAIL = 2
-        TIME_LIMIT = 3
+        FAIL = 1
+        TIME_LIMIT = 2
 
     def __init__(self, config):
         self.config = config
         self.physics = mujoco.Physics.from_xml_path(config.xml_path)
+
+        self.np_random = self.seed()
+        self.config.target_direction = self._get_direction()
+
         self._sensor = RGBDSensor(robot=self.physics, config=config)
         self._actuator = Actuator(robot=self.physics, config=config)
-        self._callbacks = {RobotEnv.Events.START_EPISODE: [],
-                           RobotEnv.Events.END_EPISODE: [],
-                           RobotEnv.Events.CLOSE: [],
-                           RobotEnv.Events.CHECKPOINT: []}
-        self.register_events()
+        if not self.config.im_reward:
+            self._reward_fn = Reward(robot=self.physics, config=config)
+        else:
+            self._reward_fn = IntrinsicReward(robot=self.physics, config=config)
+
         self.setup_spaces()
-        self.np_random = self.seed()
-        self.target_direction = self._get_direction()
-
-    def register_events(self):
-        """
-        Register the events to be triggered.
-        """
-        # set up the reset function
-        reset = functools.partial(_reset, self.physics, self._actuator)
-
-        # Register callbacks
-        self.register_callback(RobotEnv.Events.START_EPISODE, reset)
-        # self.register_callback(RobotEnv.Events.START_EPISODE, self._reward_fn.reset)  # TODO: change and link to reward fn
-        # self.register_callback(RobotEnv.Events.END_EPISODE, self.curriculum.update)  # TODO: change and link to history
-        self.register_callback(RobotEnv.Events.CLOSE, self.close)
-
-    def _trigger_event(self, event, *event_args):
-        """
-        Trigger the given event.
-        :param event: the event to trigger
-        :param event_args: the arguments to pass to the event
-        """
-        for fn, args, kwargs in self._callbacks[event]:
-            fn(*(event_args + args), **kwargs)
-
-    def register_callback(self, event, fn, *args, **kwargs):
-        """
-        Register a callback associated with the given event.
-        :param event: the event to register the callback for
-        :param fn: the callback function
-        :param args: the arguments to pass to the callback function
-        :param kwargs: the keyword arguments to pass to the callback function
-        """
-        self._callbacks[event].append((fn, args, kwargs))
 
     def _get_direction(self):
         """
@@ -97,7 +48,15 @@ class RobotEnv(gym.Env):
         Reset the environment.
         :return: the initial observation
         """
-        self._trigger_event(RobotEnv.Events.START_EPISODE)
+        # constant actuator signal
+        self.physics.reset()
+        # gravity compensation
+        mg = -(0.438 * self.physics.model.opt.gravity[2])
+        self.physics.named.data.xfrc_applied["ee", 2] = mg
+
+        # record the initial position of the object to calculate total distance
+        self.config.restart_obj_pos = self.physics.named.data.xpos["object"].copy()
+
         self.episode_step = 0
         self.episode_rewards = np.zeros(self.config.time_horizon)
         self.status = RobotEnv.Status.RUNNING
@@ -163,6 +122,8 @@ class RobotEnv(gym.Env):
             pos_reached["fail"] = True
             self.status = RobotEnv.Status.FAIL
 
+        object_grasped = 0
+
         if pos_reached["target"]:
             if open_close > 0. and not self.gripper_open:
                 target_qpos = self._actuator.open_gripper()
@@ -180,8 +141,8 @@ class RobotEnv(gym.Env):
                 while self.gripper_open:
                     deltas = abs(target_qpos - self.physics.data.qpos[5:7])
                     # check if the object is securely grasped
-                    object_graspped = self._actuator.check_grasp("object")
-                    print("Object graspped: ", object_graspped == 3)
+                    object_grasped = self._actuator.check_grasp("object")
+                    print("Object grasped: ", object_grasped == 3)
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
@@ -189,8 +150,14 @@ class RobotEnv(gym.Env):
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = False
 
-                    if object_graspped == 3:
+                    if object_grasped == 3:
                         self.gripper_open = False
+
+        final_obj_pos = self.physics.named.data.xpos["object"]
+        final_gripper_pos = self.physics.named.data.xpos["ee"]
+        if np.linalg.norm(final_obj_pos - final_gripper_pos) > 1.:
+            return RobotEnv.Status.FAIL
+        print(np.linalg.norm(final_obj_pos - final_gripper_pos))
 
         print("Final position: ", self.physics.named.data.xpos["ee"])
         # print("Target position: ", target_pos)
@@ -198,12 +165,10 @@ class RobotEnv(gym.Env):
         # print("Target position: ", target_ori)
         print("Position reached: ", pos_reached)
 
-        final_obj_pos = self.physics.named.data.xpos["object"]
-
         new_obs = self.get_observation()
 
-        # reward, self.status = self._reward_fn(self.obs, new_obs, init_obj_pos, final_obj_pos)
-        # self.episode_rewards[self.episode_step] = reward
+        reward = self._reward_fn(self.obs, new_obs, init_obj_pos, final_obj_pos)
+        self.episode_rewards[self.episode_step] = reward
 
         if self.status != RobotEnv.Status.RUNNING:
             done = True
@@ -213,19 +178,19 @@ class RobotEnv(gym.Env):
             done = False
 
         if done:
-            self._trigger_event(RobotEnv.Events.END_OF_EPISODE, self)
-            total_distance = np.linalg.norm(final_obj_pos)
+            total_distance = np.linalg.norm(final_obj_pos - self.config.restart_obj_pos)
 
         self.episode_step += 1
         self.obs = new_obs
 
-        # return self.obs, reward, done, {"is_success": self.status==RobotEnv.Status.SUCCESS,
-        #                                 "episode_step": self.episode_step,
-        #                                 "episode_rewards": self.episode_rewards,
-        #                                 "status": self.status,
-        #                                 "position_reached": pos_reached,
-        #                                 "object_grasped": object_graspped,
-        #                                 "total_distance": total_distance}
+        return self.obs, reward, done, {"episode_step": self.episode_step,
+                                        "episode_rewards": self.episode_rewards,
+                                        "status": self.status,
+                                        "gripper_position": final_gripper_pos,
+                                        "object_position": final_obj_pos,
+                                        "position_reached": pos_reached,
+                                        "object_grasped": object_grasped,
+                                        "total_distance": total_distance}
 
     def get_observation(self):
         """
@@ -298,8 +263,6 @@ class RobotEnv(gym.Env):
         Set the random seed for the environment.
         :param seed: the random seed
         """
-        if seed is None:
-            seed = self.config.seed
         self.np_random, seed = seeding.np_random(seed)
         return self.np_random
 

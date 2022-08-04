@@ -10,5 +10,6 @@ setup(
         "opencv-python==4.6.0.66",
         "stable-baselines3==1.6.0",
         "torch==1.12.0",
+        "scipy==1.8.1",
     ],
 )

@@ -1,4 +1,5 @@
 import gym
+import math
 import numpy as np
 from utils import transformations
 from dm_control.mujoco.wrapper.mjbindings import mjlib
@@ -13,10 +14,8 @@ class Actuator:
 
         self._sensor = RGBDSensor(robot=self.physics, config=config)
 
-        self._workspace = {'lower': np.array([-0.6, -0.6, 0.1]),
-                           'upper': np.array([0.6, 0.6, 0.5])}
-        self._roll_rotation = {'lower': -np.pi / 4,
-                               'upper': np.pi / 4}
+        self._height = {'lower': 0.1, 'upper': 0.5}
+        self._roll_rotation = {'lower': -np.pi / 4, 'upper': np.pi / 4}
 
     def _normalise_action(self, action):
         """
@@ -197,10 +196,11 @@ class Actuator:
         Get the current pheromone level of the environment.
         :return: [float] the current pheromone level of the environment
         """
-        target_dir = self.physics.target_direction
-        ee_pos = self.physics.named.data.xpos["ee"]
+        target_dir = self.config.target_direction
+        ee_pos = self.physics.named.data.xpos["ee"][:2]
         project_ee = (np.dot(ee_pos, target_dir) / np.linalg.norm(target_dir) ** 2) * target_dir
-        return -np.linalg.norm(project_ee - ee_pos)
+        dist = np.linalg.norm(project_ee - ee_pos)
+        return 1/math.exp(dist)
 
     def setup_action_space(self):
         """
@@ -271,8 +271,9 @@ class Actuator:
                 orientation[0] = self._roll_rotation['lower']
         orientation[1] = 0.
 
-        position = np.clip(position,
-                           self._workspace['lower'],
-                           self._workspace['upper'])
+        if position[2] < self._height['lower']:
+            position[2] = self._height['lower']
+        if position[2] > self._height['upper']:
+            position[2] = self._height['upper']
 
         return position, orientation

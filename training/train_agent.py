@@ -1,6 +1,7 @@
 from simulation.config import Config
 from simulation.environment.robot_env import RobotEnv
-from utils import transformations
+from training.feature_extractor import AugmentedNatureCNN
+from stable_baselines3.common.env_checker import check_env
 import numpy as np
 import time
 
@@ -8,10 +9,11 @@ import time
 def run():
     config = Config()
     env = RobotEnv(config)
+    # check_env(env, warn=True)
     env.reset()
     # print(env.physics.named.data.xpos["box_1"])
     # print(env.physics.named.data.xquat["box_1"])
-    # env.step(np.array([0, 0, 0, 0, 0, -0.3]))
+    obs, _, _, info = env.step(np.array([0, 0, 0, 0, 1, -0.3]))
     # env.step(np.array([-1, 0, 0, 0, 0, -0.3]))
     # env.step(np.array([0, 0, 1, 0, 0, -0.3]))
     # env.step(np.array([0, 0, 0, 0, 0, 0.3]))
@@ -26,16 +28,17 @@ def run():
     # env.move_to_pose(np.array([0.3, 0.3, 0.3]), np.array([0.8726646, 3.1415927]))
     # env.move_to_pose(np.array([0.05, 0., 0.]), np.array([0., 0.]))
     # env.close_gripper()
+    fext = AugmentedNatureCNN(env.observation_space)
+    print(info)
+    # print(env.physics.named.data.qpos)
+    #
+    # print(env.physics.named.data.xpos["object"])
+    # print(env.physics.named.data.xquat["object"])
+    # print(env.physics.named.data.xpos["ee"])
+    # print(env.physics.named.data.xquat["ee"])
+    # print(transformations.euler_from_quaternion(env.physics.named.data.xquat["ee"]))
 
-    print(env.physics.named.data.qpos)
-
-    print(env.physics.named.data.xpos["object"])
-    print(env.physics.named.data.xquat["object"])
-    print(env.physics.named.data.xpos["ee"])
-    print(env.physics.named.data.xquat["ee"])
-    print(transformations.euler_from_quaternion(env.physics.named.data.xquat["ee"]))
-
-    env.render()
+    # env.render()
     # time.sleep(5)
     # env.close()
 

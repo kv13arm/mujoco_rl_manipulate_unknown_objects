@@ -1,5 +1,8 @@
+import cv2
 import numpy as np
-from simulation.environment.robot_env import RobotEnv
+from scipy.special import rel_entr
+
+from utils.utils import make_pdf, transform_depth
 
 
 class Reward:
@@ -10,22 +13,28 @@ class Reward:
         self.config = config
 
     def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos):
-        return self.agent_reward(init_obj_pos, final_obj_pos), RobotEnv.Status.RUNNING
+        return self.agent_reward(init_obj_pos, final_obj_pos)
 
     def agent_reward(self, init_obj_pos, final_obj_pos):
         """Reward function for the agent."""
         reward = 0.
 
-        target_dir = self.physics.target_direction
+        target_dir = self.config.target_direction
 
-        init_obj_proj = (np.dot(init_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2) * target_dir
-        final_obj_proj = (np.dot(final_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2) * target_dir
-        dist_to_target_vector = np.linalg.norm(init_obj_proj - final_obj_pos)
+        # project the object position onto the target direction before and after the action
+        # compute projection scalars
+        init_obj_proj = (np.dot(init_obj_pos[:2], target_dir) / np.linalg.norm(target_dir) ** 2)
+        final_obj_proj = (np.dot(final_obj_pos[:2], target_dir) / np.linalg.norm(target_dir) ** 2)
 
-        if (final_obj_proj - init_obj_proj > 0.) and (dist_to_target_vector < 0.02):
-            reward = np.linalg.norm(final_obj_pos * target_dir - init_obj_pos * target_dir)
+        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos[:2])
 
-        return reward * 100  # values are in meters and, therefore, very little
+        if (final_obj_proj - init_obj_proj > 0.) and (dist_to_target_vector < 0.1):
+            reward = np.linalg.norm(final_obj_proj * target_dir - init_obj_proj * target_dir)
+
+        #  time penalty
+        # reward -= 0.01
+
+        return reward * 100  # values are in meters and, therefore, very small
 
 
 class IntrinsicReward(Reward):
@@ -39,20 +48,26 @@ class IntrinsicReward(Reward):
         agent_reward = self.agent_reward(init_obj_pos, final_obj_pos)
         intrinsic_reward = self.intrinsic_reward(obs, new_obs)
 
-        return agent_reward + intrinsic_reward, RobotEnv.Status.RUNNING
+        return agent_reward + intrinsic_reward
 
     def intrinsic_reward(self, obs, new_obs):
         """Intrinsic reward function."""
-        reward = 0.
-        rgb_obs = obs[..., :3]
-        rgb_new_obs = new_obs[..., :3]
+
+        rgb_obs_pdf = make_pdf(cv2.cvtColor(obs[..., :3], cv2.COLOR_BGR2GRAY))
+        rgb_new_obs_pdf = make_pdf(cv2.cvtColor(new_obs[..., :3], cv2.COLOR_BGR2GRAY))
+
+        kl_div = rel_entr(rgb_obs_pdf, rgb_new_obs_pdf)
+        kl_div[np.isinf(kl_div)] = 0.
+        reward = sum(kl_div)
 
         if self.config.full_observation:
-            depth_obs = obs[..., 3]
-            depth_new_obs = new_obs[..., 3]
+            # depth_obs = transform_depth(obs[..., 3])
+            # depth_new_obs = transform_depth(new_obs[..., 3])
 
+            depth_obs_pdf = make_pdf(obs[..., 3])
+            depth_new_obs_pdf = make_pdf(new_obs[..., 3])
+            kl_div_depth = rel_entr(depth_obs_pdf, depth_new_obs_pdf)
+            kl_div_depth[np.isinf(kl_div_depth)] = 0.
+            reward = (reward + sum(kl_div_depth))/2
 
-        return reward, RobotEnv.Status.RUNNING
-
-# if the object is very far away from the target direction or gripper status is fail
-# no more boundaries on the workspace
+        return float(reward)
