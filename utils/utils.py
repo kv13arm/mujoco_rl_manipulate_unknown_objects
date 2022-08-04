@@ -17,3 +17,11 @@ def transform_depth(depth):
     # For debugging
     # cv2.imwrite(f"depth_{camera}.png", pixels)
     return pixels
+
+
+def chw_to_hwc(img):
+    return img.transpose((1, 2, 0))
+
+
+def hwc_to_chw(img):
+    return img.transpose((2, 0, 1))

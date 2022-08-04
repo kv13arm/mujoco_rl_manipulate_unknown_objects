@@ -29,7 +29,8 @@ def run():
     # env.move_to_pose(np.array([0.05, 0., 0.]), np.array([0., 0.]))
     # env.close_gripper()
     fext = AugmentedNatureCNN(env.observation_space)
-    print(info)
+    fext.forward(obs["observation"])
+    print("test")
     # print(env.physics.named.data.qpos)
     #
     # print(env.physics.named.data.xpos["object"])

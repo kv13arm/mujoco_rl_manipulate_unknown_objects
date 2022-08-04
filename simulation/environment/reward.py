@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from scipy.special import rel_entr
 
-from utils.utils import make_pdf, transform_depth
+from utils.utils import make_pdf, chw_to_hwc
 
 
 class Reward:
@@ -23,10 +23,10 @@ class Reward:
 
         # project the object position onto the target direction before and after the action
         # compute projection scalars
-        init_obj_proj = (np.dot(init_obj_pos[:2], target_dir) / np.linalg.norm(target_dir) ** 2)
-        final_obj_proj = (np.dot(final_obj_pos[:2], target_dir) / np.linalg.norm(target_dir) ** 2)
+        init_obj_proj = (np.dot(init_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
+        final_obj_proj = (np.dot(final_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
 
-        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos[:2])
+        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos)
 
         if (final_obj_proj - init_obj_proj > 0.) and (dist_to_target_vector < 0.1):
             reward = np.linalg.norm(final_obj_proj * target_dir - init_obj_proj * target_dir)
@@ -52,6 +52,9 @@ class IntrinsicReward(Reward):
 
     def intrinsic_reward(self, obs, new_obs):
         """Intrinsic reward function."""
+
+        obs = chw_to_hwc(obs)
+        new_obs = chw_to_hwc(new_obs)
 
         rgb_obs_pdf = make_pdf(cv2.cvtColor(obs[..., :3], cv2.COLOR_BGR2GRAY))
         rgb_new_obs_pdf = make_pdf(cv2.cvtColor(new_obs[..., :3], cv2.COLOR_BGR2GRAY))

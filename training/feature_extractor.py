@@ -1,29 +1,7 @@
 import gym
 import torch as th
 from torch import nn
-from stable_baselines3.common.preprocessing import is_image_space
-
-
-class BaseFeaturesExtractor(nn.Module):
-    """
-    Copied from stable_baselines3 torch_layers.py.
-    Base class that represents a features extractor.
-    :param observation_space:
-    :param features_dim: Number of features extracted.
-    """
-
-    def __init__(self, observation_space: gym.Space, features_dim: int = 0):
-        super().__init__()
-        assert features_dim > 0
-        self._observation_space = observation_space
-        self._features_dim = features_dim
-
-    @property
-    def features_dim(self) -> int:
-        return self._features_dim
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        raise NotImplementedError()
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 
 class AugmentedNatureCNN(BaseFeaturesExtractor):
@@ -38,19 +16,10 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: gym.spaces.Box, features_dim: int = 512):
+    def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 512):
         super().__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
-        # Re-ordering will be done by pre-preprocessing or wrapper
-        # assert is_image_space(observation_space, check_channels=False), (
-        #     "You should use NatureCNN "
-        #     f"only with images not with {observation_space}\n"
-        #     "(you are probably using `CnnPolicy` instead of `MlpPolicy` or `MultiInputPolicy`)\n"
-        #     "If you are using a custom environment,\n"
-        #     "please check it using our env checker:\n"
-        #     "https://stable-baselines3.readthedocs.io/en/master/common/env_checker.html"
-        # )
-        n_input_channels = observation_space.shape[0]
+        n_input_channels = observation_space["observation"].shape[0] - 1
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
             nn.ReLU(),
@@ -63,18 +32,20 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
 
         # Compute shape by doing one forward pass
         with th.no_grad():
-            n_flatten = self.cnn(th.as_tensor(observation_space.sample()[..., :-1][None]).float()).shape[1]
+            n_flatten = self.cnn(th.as_tensor(observation_space["observation"].sample()[:-1, ...][None]).float()).shape[1]
 
         self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
 
     def forward(self, observations: th.Tensor, num_direct_features: int = 2) -> th.Tensor:
 
         # take last channel as direct features
-        other_features = nn.Flatten(observations[..., -1])
+        other_features = observations[-1, ...].flatten()
         # take known amount of direct features, rest are padding zeros
-        other_features = other_features[:, :num_direct_features]
+        other_features = th.as_tensor(other_features[:num_direct_features][None])
 
-        img_output = self.linear(self.cnn(observations[..., :-1]))
+        # obs_cnn = th.as_tensor(observations[:-1, ...][None]).float()
+        # img_output = self.linear(self.cnn(obs_cnn))
+        img_output = self.linear(self.cnn(observations[:-1, ...]))
         concat = th.cat((img_output, other_features), dim=1)
 
         return concat

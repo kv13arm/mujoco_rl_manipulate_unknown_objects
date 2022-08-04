@@ -29,6 +29,7 @@ class Config:
     max_steps: int = 500
     im_reward: bool = True
     restart_obj_pos: None
+    her_buffer: bool = False
 
     # Markov decision process parameters
     discount_factor: float = 0.99
