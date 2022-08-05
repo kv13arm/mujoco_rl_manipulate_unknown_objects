@@ -16,7 +16,7 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 512):
+    def __init__(self, observation_space: gym.spaces.Dict, features_dim: int = 514):
         super().__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
         n_input_channels = observation_space["observation"].shape[0] - 1
@@ -34,18 +34,16 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
         with th.no_grad():
             n_flatten = self.cnn(th.as_tensor(observation_space["observation"].sample()[:-1, ...][None]).float()).shape[1]
 
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+        self.linear = nn.Sequential(nn.Linear(n_flatten, 512), nn.ReLU())
 
     def forward(self, observations: th.Tensor, num_direct_features: int = 2) -> th.Tensor:
 
-        # take last channel as direct features
-        other_features = observations[-1, ...].flatten()
         # take known amount of direct features, rest are padding zeros
-        other_features = th.as_tensor(other_features[:num_direct_features][None])
+        other_features = observations["observation"][:, -1, :, :][:, 0, :2]
 
         # obs_cnn = th.as_tensor(observations[:-1, ...][None]).float()
         # img_output = self.linear(self.cnn(obs_cnn))
-        img_output = self.linear(self.cnn(observations[:-1, ...]))
+        img_output = self.linear(self.cnn(observations["observation"][:, :-1, :, :]))
         concat = th.cat((img_output, other_features), dim=1)
 
         return concat

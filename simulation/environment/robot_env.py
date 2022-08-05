@@ -97,17 +97,17 @@ class RobotEnv(gym.GoalEnv):
             self.physics.step()
             if self.config.show_obs:
                 self.render()
-            print("Iteration: ", i)
+            # print("Iteration: ", i)
             step_limit -= 1
             deltas = abs(current_qpos - target_qpos)
-            print("qpos difference:", deltas)
+            # print("qpos difference:", deltas)
             if max(deltas) < self.config.pos_tolerance:
                 pos_reached["target"] = True
                 self.physics.data.ctrl[0:5] = 0
                 break
 
         if step_limit == 0:
-            print("Target not reached. Returning to initial position.")
+            # print("Target not reached. Returning to initial position.")
             target_qpos = init_qpos[:5]
 
             for i in range(self.config.max_steps):
@@ -118,7 +118,7 @@ class RobotEnv(gym.GoalEnv):
                     self.render()
 
                 deltas = abs(current_qpos - target_qpos)
-                print("qpos difference:", deltas)
+                # print("qpos difference:", deltas)
                 if max(deltas) < self.config.pos_tolerance:
                     pos_reached["initial"] = True
                     self.physics.data.ctrl[0:5] = 0
@@ -133,47 +133,52 @@ class RobotEnv(gym.GoalEnv):
         if pos_reached["target"]:
             if open_close > 0. and not self.gripper_open:
                 target_qpos = self._actuator.open_gripper()
-                while not self.gripper_open:
+                for i in range(self.config.max_steps):
                     deltas = abs(target_qpos - self.physics.data.qpos[5:7])
-                    print(deltas)
+                    # print(deltas)
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
                     if max(deltas) < self.config.grasp_tolerance:
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = True
+                        break
+                    self.physics.data.ctrl[5:7] = 0
             elif open_close < 0. and self.gripper_open:
                 target_qpos = self._actuator.close_gripper()
-                while self.gripper_open:
+                for i in range(self.config.max_steps):
                     deltas = abs(target_qpos - self.physics.data.qpos[5:7])
                     # check if the object is securely grasped
                     object_grasped = self._actuator.check_grasp("object")
-                    print("Object grasped: ", object_grasped == 3)
+                    # print("Object grasped: ", object_grasped == 3)
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
                     if max(deltas) < self.config.grasp_tolerance:
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = False
+                        break
 
                     if object_grasped == 3:
                         self.gripper_open = False
+                        break
+                    self.physics.data.ctrl[5:7] = 0
 
         final_obj_pos = self.physics.named.data.xpos["object"][:2]
         final_gripper_pos = self.physics.named.data.xpos["ee"][:2]
         if np.linalg.norm(final_obj_pos - final_gripper_pos) > 1.:
-            return RobotEnv.Status.FAIL
+            self.status = RobotEnv.Status.FAIL
 
         target_dir = self.config.target_direction
         self.obs["desired_goal"] = ((np.dot(final_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
                                     * target_dir).astype(np.float32)
         self.obs["achieved_goal"] = final_obj_pos.astype(np.float32)
 
-        print("Final position: ", self.physics.named.data.xpos["ee"])
-        # print("Target position: ", target_pos)
-        print("Final position: ", self.physics.named.data.xquat["ee"])
-        # print("Target position: ", target_ori)
-        print("Position reached: ", pos_reached)
+        # print("Final position: ", self.physics.named.data.xpos["ee"])
+        # # print("Target position: ", target_pos)
+        # print("Final position: ", self.physics.named.data.xquat["ee"])
+        # # print("Target position: ", target_ori)
+        # print("Position reached: ", pos_reached)
 
         new_obs = self.get_observation()
         old_obs = self.obs["observation"].copy()
@@ -194,10 +199,11 @@ class RobotEnv(gym.GoalEnv):
             done = False
 
         if done:
-            total_distance = np.linalg.norm(final_obj_pos - self.config.restart_obj_pos)
+            total_distance = np.linalg.norm(final_obj_pos - self.config.restart_obj_pos[:2])
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
+        print("Episode step: ", self.episode_step)
 
         return self.obs, reward, done, {"episode_step": self.episode_step,
                                         "episode_rewards": self.episode_rewards,
@@ -237,9 +243,9 @@ class RobotEnv(gym.GoalEnv):
         sensor_pad[0][1] = self._actuator.pheromone_level()
 
         if not self.config.full_observation:
-            obs = np.dstack((rgb, sensor_pad)).astype(np.float32)
+            obs = np.dstack((rgb, sensor_pad)).astype(np.uint8)
         else:
-            obs = np.dstack((rgb, depth, sensor_pad)).astype(np.float32)
+            obs = np.dstack((rgb, depth, sensor_pad)).astype(np.uint8)
 
         if self.config.show_obs:
             self.render()
