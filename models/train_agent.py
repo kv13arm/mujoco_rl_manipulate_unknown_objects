@@ -1,40 +1,54 @@
 import os
 import gym
+from simulation.env.robot_env import RobotEnv
 from config.train_config import TrainConfig
-from simulation.environment.robot_env import RobotEnv
 from models.feature_extractor import AugmentedNatureCNN
 from models.callbacks import ProgressBarManager
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import EvalCallback, CallbackList
+from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
 
 def train(config):
-    env = RobotEnv(config)
-
+    make_env = RobotEnv(config)
     policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
                          share_features_extractor=True)
 
-    env = DummyVecEnv([lambda: Monitor(gym.make('Ant-Gripper-v0', config=config),
+    env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
-    test_env = DummyVecEnv([lambda: gym.make('gripper-env-v0', config=config)])
+    test_env = DummyVecEnv([lambda: make_env])
 
     # use deterministic actions for evaluation
-    eval_callback = EvalCallback(test_env, best_model_save_path=model_save_dir,
-                                 log_path=model_save_dir, eval_freq=2000, n_eval_episodes=2,
-                                 deterministic=True, render=False)
+    eval_callback = EvalCallback(test_env,
+                                 best_model_save_path=model_save_dir,
+                                 log_path=model_save_dir,
+                                 eval_freq=2000,
+                                 n_eval_episodes=2,
+                                 deterministic=True,
+                                 render=False)
 
     load_best_model = False
     if load_best_model:
         best_model = model_save_dir + 'best_model.zip'
-        model = SAC.load(best_model, env, verbose=1)
+        model = SAC.load(best_model,
+                         env,
+                         verbose=1)
         # print("Loaded model:", "gamma =", model.gamma)
+        with ProgressBarManager(1000000) as progress_callback:
+            model.learn(1000000,
+                        callback=[eval_callback, progress_callback],
+                        reset_num_timesteps=False)
     else:
-        model = SAC("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
+        model = SAC("MultiInputPolicy",
+                    env,
+                    policy_kwargs=policy_kwargs,
+                    verbose=1,
+                    tensorboard_log=model_save_dir)
 
-    with ProgressBarManager(10000) as progress_callback:
-        model.learn(10000, callback=[eval_callback, progress_callback])
+        with ProgressBarManager(1000000) as progress_callback:
+            model.learn(1000000,
+                        callback=[eval_callback, progress_callback])
 
     env.close()
     test_env.close()
@@ -64,7 +78,7 @@ if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
 
-    config.sim_env = "/xmls/sugar_cube_env.xml"
+    config.sim_env = "/xmls/sand_ball_env.xml"
     config.task = "/reward"
     config.trained_models += config.task
     config.name = "sand_ball"
