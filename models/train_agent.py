@@ -1,6 +1,6 @@
 from simulation.config import Config
 from simulation.environment.robot_env import RobotEnv
-from training.feature_extractor import AugmentedNatureCNN
+from models.feature_extractor import AugmentedNatureCNN
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
@@ -23,7 +23,7 @@ def run():
     # # print(env.action_space)
     # # print(env.action_space.sample())
     #
-    # for step in range(20):
+    # for step in range(40):
     #     print("Step {}".format(step + 1))
     #     _, reward, done, info = env.step(env.action_space.sample())
     #     print('reward=', reward, 'done=', done)
@@ -70,7 +70,7 @@ def run():
 
 if __name__ == '__main__':
     run()
-    # make_video("C:/Users/an-de/Documents/MSc AI_UoE/disseration/training/images/*.jpg", "timestep_2e-3_codim_3")
+    # make_video("C:/Users/an-de/Documents/MSc AI_UoE/disseration/models/images/*.jpg", "timestep_2e-3_codim_3")
 
 # import gym
 #

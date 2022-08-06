@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from scipy.special import rel_entr
 
-from utils.utils import make_pdf, chw_to_hwc
+from simulation.utils.utils import make_pdf, chw_to_hwc, project_to_target_direction
 
 
 class Reward:
@@ -12,19 +12,16 @@ class Reward:
         self.physics = robot
         self.config = config
 
-    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos):
-        return self.agent_reward(init_obj_pos, final_obj_pos)
+    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir):
+        return self.agent_reward(init_obj_pos, final_obj_pos, target_dir)
 
-    def agent_reward(self, init_obj_pos, final_obj_pos):
+    def agent_reward(self, init_obj_pos, final_obj_pos, target_dir):
         """Reward function for the agent."""
         reward = 0.
-
-        target_dir = self.config.target_direction
-
         # project the object position onto the target direction before and after the action
         # compute projection scalars
-        init_obj_proj = (np.dot(init_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
-        final_obj_proj = (np.dot(final_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
+        init_obj_proj = project_to_target_direction(init_obj_pos, target_dir)
+        final_obj_proj = project_to_target_direction(final_obj_pos, target_dir)
 
         dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos)
 
@@ -44,8 +41,8 @@ class IntrinsicReward(Reward):
         self.physics = robot
         self.config = config
 
-    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos):
-        agent_reward = self.agent_reward(init_obj_pos, final_obj_pos)
+    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir):
+        agent_reward = self.agent_reward(init_obj_pos, final_obj_pos, target_dir)
         intrinsic_reward = self.intrinsic_reward(obs, new_obs)
 
         return agent_reward + intrinsic_reward
@@ -64,9 +61,6 @@ class IntrinsicReward(Reward):
         reward = sum(kl_div)
 
         if self.config.full_observation:
-            # depth_obs = transform_depth(obs[..., 3])
-            # depth_new_obs = transform_depth(new_obs[..., 3])
-
             depth_obs_pdf = make_pdf(obs[..., 3])
             depth_new_obs_pdf = make_pdf(new_obs[..., 3])
             kl_div_depth = rel_entr(depth_obs_pdf, depth_new_obs_pdf)

@@ -1,7 +1,8 @@
 import gym
 import math
 import numpy as np
-from utils import transformations
+from simulation.utils import transformations
+from simulation.utils.utils import project_to_target_direction
 from dm_control.mujoco.wrapper.mjbindings import mjlib
 from sklearn.preprocessing import MinMaxScaler
 from simulation.controller.sensor import RGBDSensor
@@ -191,15 +192,14 @@ class Actuator:
 
         return (left_finger_pos + right_finger_pos) / 1.6
 
-    def pheromone_level(self):
+    def pheromone_level(self, target_dir):
         """
         Get the current pheromone level of the environment.
         :return: [float] the current pheromone level of the environment
         """
         levels = {"high": 3, "medium": 2, "low": 1, "none": 0}
-        target_dir = self.config.target_direction
         ee_pos = self.physics.named.data.xpos["ee"][:2]
-        project_ee = (np.dot(ee_pos, target_dir) / np.linalg.norm(target_dir) ** 2) * target_dir
+        project_ee = project_to_target_direction(ee_pos, target_dir) * target_dir
         dist = np.linalg.norm(project_ee - ee_pos)
         concentration = 1/math.exp(dist)
         if concentration > 0.75:

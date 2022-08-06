@@ -25,3 +25,7 @@ def chw_to_hwc(img):
 
 def hwc_to_chw(img):
     return img.transpose((2, 0, 1))
+
+
+def project_to_target_direction(pos, target_dir):
+    return np.dot(pos, target_dir) / np.linalg.norm(target_dir) ** 2

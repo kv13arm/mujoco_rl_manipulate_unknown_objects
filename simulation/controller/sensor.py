@@ -1,7 +1,7 @@
 import copy
 from gym.spaces import Box, Dict
 import numpy as np
-from utils.utils import transform_depth
+from simulation.utils.utils import transform_depth
 
 
 class RGBDSensor:

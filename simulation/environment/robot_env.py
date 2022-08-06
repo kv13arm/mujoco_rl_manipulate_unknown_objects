@@ -9,7 +9,7 @@ from dm_control import mujoco
 from simulation.controller.sensor import RGBDSensor
 from simulation.controller.actuator import Actuator
 from simulation.environment.reward import Reward, IntrinsicReward
-from utils.utils import hwc_to_chw
+from simulation.utils.utils import hwc_to_chw, project_to_target_direction
 
 
 class RobotEnv(gym.GoalEnv):
@@ -24,7 +24,7 @@ class RobotEnv(gym.GoalEnv):
         self.physics = mujoco.Physics.from_xml_path(config.xml_path)
 
         self.np_random = self.seed()
-        self.config.target_direction = self._get_direction()
+        self.target_direction = self._get_direction()
 
         self.obs = dict()
 
@@ -59,14 +59,14 @@ class RobotEnv(gym.GoalEnv):
         self.physics.named.data.xfrc_applied["ee", 2] = mg
 
         # record the initial position of the object to calculate total distance
-        self.config.restart_obj_pos = self.physics.named.data.xpos["object"].copy()
+        self.restart_obj_pos = self.physics.named.data.xpos["object"][:2].copy()
 
         self.episode_step = 0
         self.episode_rewards = np.zeros(self.config.time_horizon)
         self.status = RobotEnv.Status.RUNNING
         self.obs["observation"] = self.get_observation()
         self.obs["achieved_goal"] = self.physics.named.data.xpos["object"][:2].copy().astype(np.float32)
-        self.obs["desired_goal"] = self.config.target_direction.copy().astype(np.float32)
+        self.obs["desired_goal"] = self.target_direction.copy().astype(np.float32)
         self.gripper_open = True
 
         return self.obs
@@ -143,7 +143,7 @@ class RobotEnv(gym.GoalEnv):
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = True
                         break
-                    self.physics.data.ctrl[5:7] = 0
+                self.physics.data.ctrl[5:7] = 0
             elif open_close < 0. and self.gripper_open:
                 target_qpos = self._actuator.close_gripper()
                 for i in range(self.config.max_steps):
@@ -162,15 +162,15 @@ class RobotEnv(gym.GoalEnv):
                     if object_grasped == 3:
                         self.gripper_open = False
                         break
-                    self.physics.data.ctrl[5:7] = 0
+                self.physics.data.ctrl[5:7] = 0
 
         final_obj_pos = self.physics.named.data.xpos["object"][:2]
         final_gripper_pos = self.physics.named.data.xpos["ee"][:2]
         if np.linalg.norm(final_obj_pos - final_gripper_pos) > 1.:
             self.status = RobotEnv.Status.FAIL
 
-        target_dir = self.config.target_direction
-        self.obs["desired_goal"] = ((np.dot(final_obj_pos, target_dir) / np.linalg.norm(target_dir) ** 2)
+        target_dir = self.target_direction
+        self.obs["desired_goal"] = (project_to_target_direction(final_obj_pos, target_dir)
                                     * target_dir).astype(np.float32)
         self.obs["achieved_goal"] = final_obj_pos.astype(np.float32)
 
@@ -187,7 +187,8 @@ class RobotEnv(gym.GoalEnv):
                                      {"old_obs": old_obs,
                                       "new_obs": new_obs,
                                       "init_obj_pos": init_obj_pos,
-                                      "final_obj_pos": final_obj_pos})
+                                      "final_obj_pos": final_obj_pos,
+                                      "target_dir": target_dir})
 
         self.episode_rewards[self.episode_step] = reward
 
@@ -199,7 +200,7 @@ class RobotEnv(gym.GoalEnv):
             done = False
 
         if done:
-            total_distance = np.linalg.norm(final_obj_pos - self.config.restart_obj_pos[:2])
+            total_distance = np.linalg.norm(final_obj_pos - self.restart_obj_pos)
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
@@ -216,14 +217,19 @@ class RobotEnv(gym.GoalEnv):
                                         "old_obs": old_obs,
                                         "new_obs": new_obs,
                                         "init_obj_pos": init_obj_pos,
-                                        "final_obj_pos": final_obj_pos}
+                                        "final_obj_pos": final_obj_pos,
+                                        "target_dir": target_dir}
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
         Compute the reward for the given achieved goal and desired goal.
         """
         args = info
-        env_reward = self._reward_fn(args["old_obs"], args["new_obs"], args["init_obj_pos"], args["final_obj_pos"])
+        env_reward = self._reward_fn(args["old_obs"],
+                                     args["new_obs"],
+                                     args["init_obj_pos"],
+                                     args["final_obj_pos"],
+                                     args["target_dir"])
 
         if self.config.her_buffer:
             dist = np.linalg.norm(desired_goal - achieved_goal)
@@ -240,7 +246,7 @@ class RobotEnv(gym.GoalEnv):
         rgb, depth = self._sensor.render_images(camera_id="gripper_camera")
         sensor_pad = np.zeros(self._sensor.state_space["observation"].shape[1:3])
         sensor_pad[0][0] = self._actuator.check_grasp("object")
-        sensor_pad[0][1] = self._actuator.pheromone_level()
+        sensor_pad[0][1] = self._actuator.pheromone_level(self.target_direction)
 
         if not self.config.full_observation:
             obs = np.dstack((rgb, sensor_pad)).astype(np.uint8)

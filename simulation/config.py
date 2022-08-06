@@ -28,13 +28,11 @@ class Config:
     # simulation parameters
     max_steps: int = 400
     im_reward: bool = False
-    restart_obj_pos: None
     her_buffer: bool = False
 
     # Markov decision process parameters
     discount_factor: float = 0.99
     time_horizon: int = 200
-    target_direction: None
 
 # if __name__ == '__main__':
 #     config = Config()
