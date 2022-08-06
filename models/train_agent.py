@@ -13,7 +13,8 @@ from stable_baselines3.common.monitor import Monitor
 def train(config):
     make_env = RobotEnv(config)
     policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
-                         share_features_extractor=True)
+                         share_features_extractor=True,
+                         net_arch=[256, 256])
 
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
@@ -44,6 +45,7 @@ def train(config):
                     env,
                     policy_kwargs=policy_kwargs,
                     buffer_size=500000,
+                    batch_size=256,
                     verbose=1,
                     tensorboard_log=model_save_dir)
 
