@@ -25,7 +25,8 @@ class RobotEnv(gym.GoalEnv):
         self.physics = mujoco.Physics.from_xml_path(Path(__file__).resolve().parent.parent.parent.as_posix() + config.sim_env)
 
         self.np_random = self.seed()
-        self.target_direction = self._get_direction()
+        # self.target_direction = self._get_direction()
+        self.target_direction = np.array([1, 0])
 
         self.obs = dict()
 
@@ -205,7 +206,7 @@ class RobotEnv(gym.GoalEnv):
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
-        print("Episode step: ", self.episode_step)
+        print(f"Step: {self.episode_step}, Target: {target_dir}")
 
         return self.obs, reward, done, {"episode_step": self.episode_step,
                                         "episode_rewards": self.episode_rewards,
