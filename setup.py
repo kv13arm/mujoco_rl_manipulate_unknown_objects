@@ -8,7 +8,7 @@ setup(
         "gym==0.21.0",
         "scikit-learn==1.1.1",
         "opencv-python==4.6.0.66",
-        "stable-baselines3==1.6.0",
+        "stable-baselines3[extra]",
         "torch==1.12.0",
         "scipy==1.8.1",
     ],
