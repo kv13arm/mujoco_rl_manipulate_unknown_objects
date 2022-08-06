@@ -1,6 +1,6 @@
 import os
 import gym
-from simulation.env.robot_env import RobotEnv
+from simulation.environment.robot_env import RobotEnv
 from config.train_config import TrainConfig
 from models.feature_extractor import AugmentedNatureCNN
 from models.callbacks import ProgressBarManager
@@ -43,6 +43,7 @@ def train(config):
         model = SAC("MultiInputPolicy",
                     env,
                     policy_kwargs=policy_kwargs,
+                    buffer_size=500000,
                     verbose=1,
                     tensorboard_log=model_save_dir)
 
@@ -53,26 +54,26 @@ def train(config):
     env.close()
     test_env.close()
 
-    # obs = env.reset()
-    # env.render()
-    # # print(env.observation_space)
-    # # print(env.action_space)
-    # # print(env.action_space.sample())
+    # obs = environment.reset()
+    # environment.render()
+    # # print(environment.observation_space)
+    # # print(environment.action_space)
+    # # print(environment.action_space.sample())
     #
     # for step in range(40):
     #     print("Step {}".format(step + 1))
-    #     _, reward, done, info = env.step(env.action_space.sample())
+    #     _, reward, done, info = environment.step(environment.action_space.sample())
     #     print('reward=', reward, 'done=', done)
-    #     env.render()
+    #     environment.render()
     #     if done:
     #         print("Goal reached!", "reward=", reward)
     #         break
 
 
-    # env.reset()
-    # print(env.physics.named.data.xpos["box_1"])
-    # print(env.physics.named.data.xquat["box_1"])
-    # obs, _, _, info = env.step(np.array([0, 0, 0, 0, 1, -0.3]))
+    # environment.reset()
+    # print(environment.physics.named.data.xpos["box_1"])
+    # print(environment.physics.named.data.xquat["box_1"])
+    # obs, _, _, info = environment.step(np.array([0, 0, 0, 0, 1, -0.3]))
 
 if __name__ == '__main__':
     config_class = TrainConfig()
