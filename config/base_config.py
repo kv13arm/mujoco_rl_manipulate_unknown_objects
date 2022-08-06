@@ -76,6 +76,11 @@ class BaseConfig():
         message += '----------------- End -------------------'
         print(message)
 
+        # process config.suffix
+        if config.suffix:
+            suffix = ('_' + config.suffix.format(**vars(config))) if config.suffix != '' else ''
+            config.name = config.name + suffix
+
         # save config to the folder
         expr_dir = os.path.join(config.trained_models, config.name)
         if isinstance(expr_dir, list) and not isinstance(expr_dir, str):
@@ -99,9 +104,6 @@ class BaseConfig():
         if config.suffix:
             suffix = ('_' + config.suffix.format(**vars(config))) if config.suffix != '' else ''
             config.name = config.name + suffix
-
-        if config.verbose:
-            self.print_config(config)
 
         self.config = config
         return self.config
