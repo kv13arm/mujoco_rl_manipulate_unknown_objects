@@ -127,12 +127,12 @@
 <!--            <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />-->
 <!--        </body>-->
 
-<!--        <body name="box_1" pos="0 0 0.2">-->
-<!--            <freejoint/>-->
-<!--&lt;!&ndash;            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;-->
+        <body name="object" pos="0 0 0.2">
+            <freejoint/>
 <!--            <geom name="box_1" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>-->
-<!--&lt;!&ndash;            <site name="target_site_1" type="box" size="0.2 0.2 0.2" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;&ndash;&gt;-->
-<!--        </body>-->
+            <geom name="object" type="box" size="0.2 0.2 0.2" mass="1" friction="1 1 1" rgba="0.9529411765 0.8 0.03529411765 1"/>
+<!--            <site name="target_site_1" type="box" size="0.2 0.2 0.2" rgba="0.9529411765 0.8 0.03529411765 1"/>&ndash;&gt;-->
+        </body>
 <!--        -->
 <!--         <body name="box_1" pos="0 0.05 0">-->
 <!--            <freejoint/>-->

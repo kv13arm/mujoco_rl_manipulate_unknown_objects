@@ -4,6 +4,7 @@ import time
 import math
 import numpy as np
 from enum import Enum
+from pathlib import Path
 from gym.utils import seeding
 from dm_control import mujoco
 from simulation.controller.sensor import RGBDSensor
@@ -21,7 +22,7 @@ class RobotEnv(gym.GoalEnv):
 
     def __init__(self, config):
         self.config = config
-        self.physics = mujoco.Physics.from_xml_path(config.xml_path)
+        self.physics = mujoco.Physics.from_xml_path(Path(__file__).resolve().parent.parent.parent.as_posix() + config.sim_env)
 
         self.np_random = self.seed()
         self.target_direction = self._get_direction()

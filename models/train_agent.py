@@ -1,4 +1,4 @@
-from simulation.config import Config
+from config.train_config import TrainConfig
 from simulation.environment.robot_env import RobotEnv
 from models.feature_extractor import AugmentedNatureCNN
 from stable_baselines3.common.env_checker import check_env
@@ -9,28 +9,28 @@ import time
 
 
 def run():
-    config = Config()
+    config = TrainConfig().parse()
     env = RobotEnv(config)
-    policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
-                         share_features_extractor=True)
-    env = make_vec_env(lambda: env, n_envs=1)
-
-    model = SAC("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1).learn(10000)
-
-    # obs = env.reset()
-    # env.render()
-    # # print(env.observation_space)
-    # # print(env.action_space)
-    # # print(env.action_space.sample())
+    # policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
+    #                      share_features_extractor=True)
+    # env = make_vec_env(lambda: env, n_envs=1)
     #
-    # for step in range(40):
-    #     print("Step {}".format(step + 1))
-    #     _, reward, done, info = env.step(env.action_space.sample())
-    #     print('reward=', reward, 'done=', done)
-    #     env.render()
-    #     if done:
-    #         print("Goal reached!", "reward=", reward)
-    #         break
+    # model = SAC("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1).learn(10000)
+
+    obs = env.reset()
+    env.render()
+    # print(env.observation_space)
+    # print(env.action_space)
+    # print(env.action_space.sample())
+
+    for step in range(40):
+        print("Step {}".format(step + 1))
+        _, reward, done, info = env.step(env.action_space.sample())
+        print('reward=', reward, 'done=', done)
+        env.render()
+        if done:
+            print("Goal reached!", "reward=", reward)
+            break
 
 
     # check_env(env, warn=True)

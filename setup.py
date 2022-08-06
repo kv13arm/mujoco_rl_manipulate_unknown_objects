@@ -5,7 +5,7 @@ setup(
     version="0.0.1",
     install_requires=[
         "dm-control==1.0.3.post1",
-        "gym==0.25.0",
+        "gym==0.21.0",
         "scikit-learn==1.1.1",
         "opencv-python==4.6.0.66",
         "stable-baselines3==1.6.0",
