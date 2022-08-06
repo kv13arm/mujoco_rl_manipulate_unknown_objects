@@ -93,8 +93,6 @@ class Actuator:
         # compute the joint angles
         err_qpos = np.dot(J_inv, np.hstack([[err_pos], [err_ori]]).T).T.squeeze()
 
-        # err_qpos = self._actuator.move_to_pose(current_pos, current_ori,
-        #                                        target_pos, target_ori)
         target_qpos = self.physics.data.qpos[:5] + err_qpos
         return target_qpos
 
@@ -202,11 +200,11 @@ class Actuator:
         project_ee = project_to_target_direction(ee_pos, target_dir) * target_dir
         dist = np.linalg.norm(project_ee - ee_pos)
         concentration = 1/math.exp(dist)
-        if concentration > 0.75:
+        if concentration > 0.82:
             return levels["high"]
-        elif concentration > 0.5:
+        elif concentration > 0.6:
             return levels["medium"]
-        elif concentration > 0.25:
+        elif concentration > 0.37:
             return levels["low"]
         else:
             return levels["none"]

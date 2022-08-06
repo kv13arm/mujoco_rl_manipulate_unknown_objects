@@ -50,11 +50,11 @@
     <worldbody>
 
         <!-- ======= CAMERAS ======= -->
-        <body pos="0 -2 0.3" euler="4.71238898 3.14159265 3.14159265">
+        <body pos="0 -3 0.3" euler="4.71238898 3.14159265 3.14159265">
                 <camera name="workbench_camera" euler="0 0 0" fovy="43"/>
         </body>
 
-        <body pos="0 0 1.5" euler="0 0 0">
+        <body pos="0 0 3" euler="0 0 0">
                 <camera name="upper_camera" euler="0 0 0" fovy="41" />
         </body>
 
@@ -75,9 +75,9 @@
             <camera name="gripper_camera" pos="0.1 0 0.05" euler="0 -1.5707963 -1.5707963" fovy="135" />
 <!--            <camera name="gripper_camera" pos="0.06 0.05 0.08" euler="0 -1.5707963 -1.5707963" fovy="90" />-->
 <!--            <camera name="gripper_camera2" pos="0.06 -0.05 0.08" euler="0 -1.5707963 -1.5707963" fovy="90" />-->
-            <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-1 1" />
-            <joint name="gripper_y" class="GRIPPER" pos="0 0 0" type="slide" axis="0 1 0" limited="true" range="-1 1" />
-            <joint name="gripper_z" class="GRIPPER" pos="0 0 0" type="slide" axis="0 0 1" limited="true" range="-1 1" />
+            <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-20 20" />
+            <joint name="gripper_y" class="GRIPPER" pos="0 0 0" type="slide" axis="0 1 0" limited="true" range="-20 20" />
+            <joint name="gripper_z" class="GRIPPER" pos="0 0 0" type="slide" axis="0 0 1" limited="true" range="-20 20" />
             <joint name="gripper_roll" class="GRIPPER" pos="0 0 0" axis="1 0 0" limited="true" range="-3.14159 3.14159" />
             <joint name="gripper_yaw" class="GRIPPER" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14159 3.14159" />
 

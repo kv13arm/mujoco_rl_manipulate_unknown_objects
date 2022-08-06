@@ -58,9 +58,9 @@
         <body name="ee" pos="-0.5 0 0.15" quat="1 0 0 0">
             <inertial pos="0 0 0" mass="0.001" diaginertia="1.66667e-08 1.66667e-08 1.66667e-08" />
             <camera name="gripper_camera" pos="0.1 0 0.05" euler="0 -1.5707963 -1.5707963" fovy="135" />
-            <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-1 1" />
-            <joint name="gripper_y" class="GRIPPER" pos="0 0 0" type="slide" axis="0 1 0" limited="true" range="-1 1" />
-            <joint name="gripper_z" class="GRIPPER" pos="0 0 0" type="slide" axis="0 0 1" limited="true" range="-1 1" />
+            <joint name="gripper_x" class="GRIPPER" pos="0 0 0" type="slide" axis="1 0 0" limited="true" range="-20 20" />
+            <joint name="gripper_y" class="GRIPPER" pos="0 0 0" type="slide" axis="0 1 0" limited="true" range="-20 20" />
+            <joint name="gripper_z" class="GRIPPER" pos="0 0 0" type="slide" axis="0 0 1" limited="true" range="-20 20" />
             <joint name="gripper_roll" class="GRIPPER" pos="0 0 0" axis="1 0 0" limited="true" range="-3.14159 3.14159" />
             <joint name="gripper_yaw" class="GRIPPER" pos="0 0 0" axis="0 0 1" limited="true" range="-3.14159 3.14159" />
 

@@ -24,33 +24,33 @@ def train(config):
     eval_callback = EvalCallback(test_env,
                                  best_model_save_path=model_save_dir,
                                  log_path=model_save_dir,
-                                 eval_freq=2000,
-                                 n_eval_episodes=2,
+                                 eval_freq=config.eval_freq,
+                                 n_eval_episodes=config.eval_episodes,
                                  deterministic=True,
-                                 render=False)
+                                 render=True)
 
     load_best_model = False
     if load_best_model:
-        best_model = model_save_dir + 'best_model.zip'
+        best_model = model_save_dir + '/best_model.zip'
         model = SAC.load(best_model,
                          env,
                          verbose=1)
-        # print("Loaded model:", "gamma =", model.gamma)
-        with ProgressBarManager(1000000) as progress_callback:
-            model.learn(1000000,
+
+        with ProgressBarManager(config.total_timesteps) as progress_callback:
+            model.learn(config.total_timesteps,
                         callback=[eval_callback, progress_callback],
                         reset_num_timesteps=False)
     else:
         model = SAC("MultiInputPolicy",
                     env,
                     policy_kwargs=policy_kwargs,
-                    buffer_size=500000,
-                    batch_size=256,
+                    buffer_size=config.buffer_size,
+                    batch_size=config.batch_size,
                     verbose=1,
                     tensorboard_log=model_save_dir)
 
-        with ProgressBarManager(1000000) as progress_callback:
-            model.learn(1000000,
+        with ProgressBarManager(config.total_timesteps) as progress_callback:
+            model.learn(config.total_timesteps,
                         callback=[eval_callback, progress_callback])
 
     env.close()
