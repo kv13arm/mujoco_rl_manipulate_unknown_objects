@@ -3,6 +3,7 @@ from simulation.environment.robot_env import RobotEnv
 from models.feature_extractor import AugmentedNatureCNN
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.callbacks import EvalCallback, CallbackList
 import numpy as np
 import time
 
@@ -10,12 +11,23 @@ import time
 def train(config):
     env = RobotEnv(config)
 
-
     policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
                          share_features_extractor=True)
     env = make_vec_env(lambda: env, n_envs=1)
 
-    model = SAC("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1).learn(10000)
+    # use deterministic actions for evaluation
+    eval_callback = EvalCallback(env, best_model_save_path='./logs/',
+                                 log_path='./logs/', eval_freq=2000, n_eval_episodes=2,
+                                 deterministic=True, render=False)
+
+    load_best_model = False
+    if load_best_model:
+        model = SAC.load('./logs/best_model.zip', env=env)
+    else:
+        model = SAC("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
+
+    model.learn(10000, callback=CallbackList([eval_callback]))
+
 
     # obs = env.reset()
     # env.render()
@@ -45,7 +57,7 @@ if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
 
-    config.sim_env = "/xmls/sand_ball_env.xml"
+    config.sim_env = "/xmls/sugar_cube_env.xml"
     config.task = "/reward"
     config.trained_models += config.task
     config.name = "sand_ball"
