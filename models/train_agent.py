@@ -20,8 +20,8 @@ def train(config):
 
     env = VecVideoRecorder(env,
                            video_folder=model_save_dir + "/videos",
-                           record_video_trigger=lambda x: x % config.eval_freq == 0,
-                           video_length=200,
+                           record_video_trigger=lambda x: x % config.record_freq == 0,
+                           video_length=config.vid_length,
                            name_prefix=f"{config.name}")
 
     test_env = DummyVecEnv([lambda: make_env])
