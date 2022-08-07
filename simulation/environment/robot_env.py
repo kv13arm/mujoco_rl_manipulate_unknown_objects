@@ -14,6 +14,7 @@ from simulation.utils.utils import hwc_to_chw, project_to_target_direction
 
 
 class RobotEnv(gym.GoalEnv):
+    metadata = {'render.modes': ['human', 'rgb_array', 'depth_array']}
 
     class Status(Enum):
         RUNNING = 0

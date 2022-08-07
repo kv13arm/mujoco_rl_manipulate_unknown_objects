@@ -1,12 +1,11 @@
 import os
-import gym
 from simulation.environment.robot_env import RobotEnv
 from config.train_config import TrainConfig
 from models.feature_extractor import AugmentedNatureCNN
 from models.callbacks import ProgressBarManager
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import EvalCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.monitor import Monitor
 
 
@@ -18,6 +17,13 @@ def train(config):
 
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
+
+    env = VecVideoRecorder(env,
+                           video_folder=model_save_dir + "/videos",
+                           record_video_trigger=lambda x: x % config.eval_freq == 0,
+                           video_length=200,
+                           name_prefix=f"{config.name}")
+
     test_env = DummyVecEnv([lambda: make_env])
 
     # use deterministic actions for evaluation
@@ -27,7 +33,7 @@ def train(config):
                                  eval_freq=config.eval_freq,
                                  n_eval_episodes=config.eval_episodes,
                                  deterministic=True,
-                                 render=True)
+                                 render=config.render_eval)
 
     load_best_model = False
     if load_best_model:
@@ -53,6 +59,8 @@ def train(config):
             model.learn(config.total_timesteps,
                         callback=[eval_callback, progress_callback])
 
+    model.save(model_save_dir)
+
     env.close()
     test_env.close()
 
@@ -71,11 +79,11 @@ def train(config):
     #         print("Goal reached!", "reward=", reward)
     #         break
 
-
     # environment.reset()
     # print(environment.physics.named.data.xpos["box_1"])
     # print(environment.physics.named.data.xquat["box_1"])
     # obs, _, _, info = environment.step(np.array([0, 0, 0, 0, 1, -0.3]))
+
 
 if __name__ == '__main__':
     config_class = TrainConfig()

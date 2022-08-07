@@ -12,5 +12,6 @@ class TrainConfig(BaseConfig):
         parser.add_argument('--eval_freq', type=int, default=2000, help='frequency of evaluation')
         parser.add_argument('--eval_episodes', type=int, default=3, help='number of episodes to evaluate')
         parser.add_argument('--buffer_size', type=int, default=int(0.5e6), help='size of replay buffer')
+        parser.add_argument('--render_eval', type=bool, default=False, help='render evaluation environment')
 
         return parser
