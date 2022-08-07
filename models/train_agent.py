@@ -27,7 +27,7 @@ def train(config):
                                  eval_freq=config.eval_freq,
                                  n_eval_episodes=config.eval_episodes,
                                  deterministic=True,
-                                 render=True)
+                                 render=False)
 
     load_best_model = False
     if load_best_model:
@@ -81,10 +81,10 @@ if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
 
-    config.sim_env = "/xmls/sand_ball_env.xml"
+    config.sim_env = "/xmls/bread_crumb_env.xml"
     config.task = "/reward"
     config.trained_models += config.task
-    config.name = "sand_ball"
+    config.name = "bread_crumb"
     config.suffix = "progress_reward_best_model"
     config.verbose = True
 

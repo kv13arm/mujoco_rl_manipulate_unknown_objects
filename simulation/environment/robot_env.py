@@ -190,7 +190,9 @@ class RobotEnv(gym.GoalEnv):
                                       "new_obs": new_obs,
                                       "init_obj_pos": init_obj_pos,
                                       "final_obj_pos": final_obj_pos,
-                                      "target_dir": target_dir})
+                                      "target_dir": target_dir,
+                                      "gripper_open": self.gripper_open,
+                                      "controls": self.physics.data.ctrl[5:7]})
 
         self.episode_rewards[self.episode_step] = reward
 
@@ -214,13 +216,14 @@ class RobotEnv(gym.GoalEnv):
                                         "gripper_position": final_gripper_pos,
                                         "object_position": final_obj_pos,
                                         "position_reached": pos_reached,
-                                        "object_grasped": object_grasped,
+                                        "gripper_open": self.gripper_open,
                                         "total_distance": total_distance,
                                         "old_obs": old_obs,
                                         "new_obs": new_obs,
                                         "init_obj_pos": init_obj_pos,
                                         "final_obj_pos": final_obj_pos,
-                                        "target_dir": target_dir}
+                                        "target_dir": target_dir,
+                                        "controls": self.physics.data.ctrl[5:7]}
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
@@ -231,7 +234,9 @@ class RobotEnv(gym.GoalEnv):
                                      args["new_obs"],
                                      args["init_obj_pos"],
                                      args["final_obj_pos"],
-                                     args["target_dir"])
+                                     args["target_dir"],
+                                     args["gripper_open"],
+                                     args["controls"])
 
         if self.config.her_buffer:
             dist = np.linalg.norm(desired_goal - achieved_goal)
