@@ -39,11 +39,11 @@
 
         <!-- ======= CAMERAS ======= -->
         <body pos="0 -3 0.3" euler="4.71238898 3.14159265 3.14159265">
-                <camera name="workbench_camera" euler="0 0 0" fovy="43"/>
+                <camera name="workbench_camera" mode="targetbodycom" target="object" fovy="43"/>
         </body>
 
         <body pos="0 0 3" euler="0 0 0">
-                <camera name="upper_camera" euler="0 0 0" fovy="41" />
+                <camera name="upper_camera" mode="targetbodycom" target="object" fovy="41" />
         </body>
 
         <!-- ======= LIGHTS ======= -->
