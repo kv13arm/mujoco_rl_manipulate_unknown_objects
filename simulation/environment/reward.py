@@ -12,10 +12,10 @@ class Reward:
         self.physics = robot
         self.config = config
 
-    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls):
-        return self.agent_reward(init_obj_pos, final_obj_pos, target_dir, gripper_open, controls)
+    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls, object_grasped):
+        return self.agent_reward(init_obj_pos, final_obj_pos, target_dir, gripper_open, controls, object_grasped)
 
-    def agent_reward(self, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls):
+    def agent_reward(self, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls, object_grasped):
         """Reward function for the agent."""
         reward = 0.
         # project the object position onto the target direction before and after the action
@@ -30,7 +30,7 @@ class Reward:
 
         if (dist_travel_obj > 0.) and (dist_travel_obj < 0.1) and (dist_to_target_vector < 0.1):
             reward = dist_travel_obj
-            if not gripper_open and np.all(controls) != 0:
+            if not gripper_open and np.all(controls) != 0 and object_grasped == 3:
                 reward = reward * 2
                 if final_obj_pos[2] > 0:
                     reward = reward * 1.5
@@ -38,7 +38,7 @@ class Reward:
         #  time penalty
         # reward -= 0.01
 
-        return reward * 100  # values are in meters and, therefore, very small
+        return reward * 30  # max reward is 9
 
 
 class IntrinsicReward(Reward):
@@ -48,8 +48,8 @@ class IntrinsicReward(Reward):
         self.physics = robot
         self.config = config
 
-    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls):
-        agent_reward = self.agent_reward(init_obj_pos, final_obj_pos, target_dir, gripper_open, controls)
+    def __call__(self, obs, new_obs, init_obj_pos, final_obj_pos, target_dir, gripper_open, controls, object_grasped):
+        agent_reward = self.agent_reward(init_obj_pos, final_obj_pos, target_dir, gripper_open, controls, object_grasped)
         intrinsic_reward = self.intrinsic_reward(obs, new_obs)
 
         return agent_reward + intrinsic_reward

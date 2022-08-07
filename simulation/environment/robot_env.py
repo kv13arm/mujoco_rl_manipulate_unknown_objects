@@ -141,7 +141,7 @@ class RobotEnv(gym.GoalEnv):
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
-                    if max(deltas) < self.config.grasp_tolerance:
+                    if (max(deltas) < self.config.grasp_tolerance) or self.physics.data.qpos[5:7] > target_qpos:
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = True
                         break
@@ -192,7 +192,8 @@ class RobotEnv(gym.GoalEnv):
                                       "final_obj_pos": final_obj_pos,
                                       "target_dir": target_dir,
                                       "gripper_open": self.gripper_open,
-                                      "controls": self.physics.data.ctrl[5:7]})
+                                      "controls": self.physics.data.ctrl[5:7],
+                                      "object_grasped": object_grasped})
 
         self.episode_rewards[self.episode_step] = reward
 
@@ -223,7 +224,8 @@ class RobotEnv(gym.GoalEnv):
                                         "init_obj_pos": init_obj_pos,
                                         "final_obj_pos": final_obj_pos,
                                         "target_dir": target_dir,
-                                        "controls": self.physics.data.ctrl[5:7]}
+                                        "controls": self.physics.data.ctrl[5:7],
+                                        "object_grasped": object_grasped}
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
@@ -236,7 +238,8 @@ class RobotEnv(gym.GoalEnv):
                                      args["final_obj_pos"],
                                      args["target_dir"],
                                      args["gripper_open"],
-                                     args["controls"])
+                                     args["controls"],
+                                     args["object_grasped"])
 
         if self.config.her_buffer:
             dist = np.linalg.norm(desired_goal - achieved_goal)
