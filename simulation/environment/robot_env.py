@@ -141,7 +141,7 @@ class RobotEnv(gym.GoalEnv):
                     self.physics.step()
                     if self.config.show_obs:
                         self.render()
-                    if (max(deltas) < self.config.grasp_tolerance) or self.physics.data.qpos[5:7] > target_qpos:
+                    if (max(deltas) < self.config.grasp_tolerance) or np.all(self.physics.data.qpos[5:7] > target_qpos):
                         self.physics.data.ctrl[5:7] = 0
                         self.gripper_open = True
                         break
