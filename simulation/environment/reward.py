@@ -20,10 +20,10 @@ class Reward:
         reward = 0.
         # project the object position onto the target direction before and after the action
         # compute projection scalars
-        init_obj_proj = project_to_target_direction(init_obj_pos, target_dir)
-        final_obj_proj = project_to_target_direction(final_obj_pos, target_dir)
+        init_obj_proj = project_to_target_direction(init_obj_pos[:2], target_dir)
+        final_obj_proj = project_to_target_direction(final_obj_pos[:2], target_dir)
 
-        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos)
+        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos[:2])
 
         # dist_travel_obj = np.linalg.norm(final_obj_proj * target_dir - init_obj_proj * target_dir)
         dist_travel_obj = final_obj_proj - init_obj_proj
@@ -32,6 +32,8 @@ class Reward:
             reward = dist_travel_obj
             if not gripper_open and np.all(controls) != 0:
                 reward = reward * 2
+                if final_obj_pos[2] > 0:
+                    reward = reward * 1.5
 
         #  time penalty
         # reward -= 0.01

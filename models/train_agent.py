@@ -27,7 +27,7 @@ def train(config):
                                  eval_freq=config.eval_freq,
                                  n_eval_episodes=config.eval_episodes,
                                  deterministic=True,
-                                 render=False)
+                                 render=True)
 
     load_best_model = False
     if load_best_model:

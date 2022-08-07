@@ -83,7 +83,7 @@ class RobotEnv(gym.GoalEnv):
                        "initial": False,
                        "fail": False}
 
-        init_obj_pos = self.physics.named.data.xpos["object"][:2].copy()
+        init_obj_pos = self.physics.named.data.xpos["object"].copy()
         total_distance = None
 
         init_qpos = self.physics.data.qpos[:5].copy()
@@ -166,15 +166,15 @@ class RobotEnv(gym.GoalEnv):
                         break
                 self.physics.data.ctrl[5:7] = 0
 
-        final_obj_pos = self.physics.named.data.xpos["object"][:2]
-        final_gripper_pos = self.physics.named.data.xpos["ee"][:2]
-        if np.linalg.norm(final_obj_pos - final_gripper_pos) > 1.:
+        final_obj_pos = self.physics.named.data.xpos["object"]
+        final_gripper_pos = self.physics.named.data.xpos["ee"]
+        if np.linalg.norm(final_obj_pos[:2] - final_gripper_pos[:2]) > 1.:
             self.status = RobotEnv.Status.FAIL
 
         target_dir = self.target_direction
-        self.obs["desired_goal"] = (project_to_target_direction(final_obj_pos, target_dir)
+        self.obs["desired_goal"] = (project_to_target_direction(final_obj_pos[:2], target_dir)
                                     * target_dir).astype(np.float32)
-        self.obs["achieved_goal"] = final_obj_pos.astype(np.float32)
+        self.obs["achieved_goal"] = final_obj_pos[:2].astype(np.float32)
 
         # print("Final position: ", self.physics.named.data.xpos["ee"])
         # # print("Target position: ", target_pos)
@@ -204,11 +204,11 @@ class RobotEnv(gym.GoalEnv):
             done = False
 
         if done:
-            total_distance = np.linalg.norm(final_obj_pos - self.restart_obj_pos)
+            total_distance = np.linalg.norm(final_obj_pos[:2] - self.restart_obj_pos)
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
-        print(f"Step: {self.episode_step}, Target: {target_dir}")
+        print(f"S: {self.episode_step}, O: {self.gripper_open}, O/C:{open_close > 0.}")
 
         return self.obs, reward, done, {"episode_step": self.episode_step,
                                         "episode_rewards": self.episode_rewards,
