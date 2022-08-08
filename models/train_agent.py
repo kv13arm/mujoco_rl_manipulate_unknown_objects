@@ -2,7 +2,7 @@ import os
 from simulation.environment.robot_env import RobotEnv
 from config.train_config import TrainConfig
 from models.feature_extractor import AugmentedNatureCNN
-from models.callbacks import ProgressBarManager
+from models.callbacks import ProgressBarManager, SaveOnBestTrainingRewardCallback
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
@@ -18,11 +18,11 @@ def train(config):
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
 
-    env = VecVideoRecorder(env,
-                           video_folder=model_save_dir + "/videos",
-                           record_video_trigger=lambda x: x % config.record_freq == 0,
-                           video_length=config.vid_length,
-                           name_prefix=f"{config.name}")
+    # env = VecVideoRecorder(env,
+    #                        video_folder=model_save_dir + "/videos",
+    #                        record_video_trigger=lambda x: x % config.record_freq == 0,
+    #                        video_length=config.vid_length,
+    #                        name_prefix=f"{config.name}")
 
     test_env = DummyVecEnv([lambda: make_env])
 
@@ -35,6 +35,9 @@ def train(config):
                                  deterministic=True,
                                  render=config.render_eval)
 
+    # save best model based on mean reward
+    save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=model_save_dir + "/best_reward_model")
+
     load_best_model = False
     if load_best_model:
         best_model = model_save_dir + '/best_model.zip'
@@ -44,7 +47,7 @@ def train(config):
 
         with ProgressBarManager(config.total_timesteps) as progress_callback:
             model.learn(config.total_timesteps,
-                        callback=[eval_callback, progress_callback],
+                        callback=[eval_callback, progress_callback, save_callback],
                         reset_num_timesteps=False)
     else:
         model = SAC("MultiInputPolicy",
@@ -57,9 +60,9 @@ def train(config):
 
         with ProgressBarManager(config.total_timesteps) as progress_callback:
             model.learn(config.total_timesteps,
-                        callback=[eval_callback, progress_callback])
+                        callback=[eval_callback, progress_callback, save_callback])
 
-    model.save(model_save_dir)
+    # model.save(model_save_dir)
 
     env.close()
     test_env.close()
@@ -95,6 +98,8 @@ if __name__ == '__main__':
     config.name = "bread_crumb"
     config.suffix = "progress_reward_best_model"
     config.verbose = True
+
+    config.render_eval = True
 
     if config.verbose:
         config_class.print_config(config)
