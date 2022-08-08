@@ -62,7 +62,7 @@ class RobotEnv(gym.GoalEnv):
         self.physics.named.data.xfrc_applied["ee", 2] = mg
 
         # record the initial position of the object to calculate total distance
-        self.restart_obj_pos = self.physics.named.data.xpos["object"][:2].copy()
+        # self.restart_obj_pos = self.physics.named.data.xpos["object"][:2].copy()
 
         self.episode_step = 0
         self.episode_rewards = np.zeros(self.config.time_horizon)
@@ -205,8 +205,19 @@ class RobotEnv(gym.GoalEnv):
         else:
             done = False
 
-        if done:
-            total_distance = np.linalg.norm(final_obj_pos[:2] - self.restart_obj_pos)
+        # if done:
+        total_distance = np.linalg.norm(final_obj_pos[:2] - init_obj_pos[:2])
+
+        # project the object position onto the target direction before and after the action
+        # compute projection scalars
+        init_obj_proj = project_to_target_direction(init_obj_pos[:2], target_dir)
+        final_obj_proj = project_to_target_direction(final_obj_pos[:2], target_dir)
+        dist_to_target_vector = np.linalg.norm(final_obj_proj * target_dir - final_obj_pos[:2])
+        dist_travel_obj = final_obj_proj - init_obj_proj
+        if (dist_travel_obj > 0.) and (dist_travel_obj < 0.1) and (dist_to_target_vector < 0.1):
+            line_distance = dist_travel_obj
+        else:
+            line_distance = 0.
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
@@ -220,6 +231,7 @@ class RobotEnv(gym.GoalEnv):
                                         "position_reached": pos_reached,
                                         "gripper_open": self.gripper_open,
                                         "total_distance": total_distance,
+                                        "line_distance": line_distance,
                                         "old_obs": old_obs,
                                         "new_obs": new_obs,
                                         "init_obj_pos": init_obj_pos,
