@@ -38,7 +38,7 @@ class Reward:
         #  time penalty
         # reward -= 0.01
 
-        return reward * 100  # max reward is 9
+        return reward * 30  # max reward is 9
 
 
 class IntrinsicReward(Reward):

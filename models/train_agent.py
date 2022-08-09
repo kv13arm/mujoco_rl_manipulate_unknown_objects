@@ -18,11 +18,11 @@ def train(config):
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
 
-    # env = VecVideoRecorder(env,
-    #                        video_folder=model_save_dir + "/videos",
-    #                        record_video_trigger=lambda x: x % config.record_freq == 0,
-    #                        video_length=config.vid_length,
-    #                        name_prefix=f"{config.name}")
+    env = VecVideoRecorder(env,
+                           video_folder=model_save_dir + "/videos",
+                           record_video_trigger=lambda x: x % config.record_freq == 0,
+                           video_length=config.vid_length,
+                           name_prefix=f"{config.name}")
 
     test_env = DummyVecEnv([lambda: make_env])
 
@@ -92,14 +92,15 @@ if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
 
-    config.sim_env = "/xmls/bread_crumb_env.xml"
-    config.task = "/reward"
+    config.sim_env = "/xmls/sugar_cube_env.xml"
+    config.task = "/ablation"
     config.trained_models += config.task
-    config.name = "bread_crumb"
-    config.suffix = "progress_reward_best_model"
+    config.name = "sugar_cube"
+    config.suffix = "rgb_only_best_model"
     config.verbose = True
+    config.full_observation = False
 
-    config.render_eval = True
+    config.render_eval = False
 
     if config.verbose:
         config_class.print_config(config)

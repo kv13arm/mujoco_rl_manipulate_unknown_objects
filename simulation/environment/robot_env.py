@@ -61,9 +61,6 @@ class RobotEnv(gym.GoalEnv):
         mg = -(0.438 * self.physics.model.opt.gravity[2])
         self.physics.named.data.xfrc_applied["ee", 2] = mg
 
-        # record the initial position of the object to calculate total distance
-        # self.restart_obj_pos = self.physics.named.data.xpos["object"][:2].copy()
-
         self.episode_step = 0
         self.episode_rewards = np.zeros(self.config.time_horizon)
         self.status = RobotEnv.Status.RUNNING
@@ -221,7 +218,7 @@ class RobotEnv(gym.GoalEnv):
 
         self.episode_step += 1
         self.obs["observation"] = new_obs
-        print(f"S: {self.episode_step}, O: {self.gripper_open}, O/C:{open_close > 0.}")
+        # print(f"S: {self.episode_step}, O: {self.gripper_open}, O/C:{open_close > 0.}")
 
         return self.obs, reward, done, {"episode_step": self.episode_step,
                                         "episode_rewards": self.episode_rewards,

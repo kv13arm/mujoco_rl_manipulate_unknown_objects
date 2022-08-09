@@ -2,7 +2,7 @@ import os
 import numpy as np
 from tqdm.auto import tqdm
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.results_plotter import load_results,ts2xy
+from stable_baselines3.common.results_plotter import load_results, ts2xy
 
 
 class ProgressBarCallback(BaseCallback):
@@ -51,7 +51,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
         super(SaveOnBestTrainingRewardCallback, self).__init__(verbose)
         self.check_freq = check_freq
         self.log_dir = log_dir
-        self.save_path = os.path.join(log_dir, 'best_model')
+        self.save_path = os.path.join(log_dir, 'best_model_training')
         self.best_mean_reward = -np.inf
 
     def _init_callback(self) -> None:
