@@ -69,6 +69,10 @@ def train(config):
                     tensorboard_log=model_save_dir)
         print("Using HER buffer")
 
+        with ProgressBarManager(config.total_timesteps) as progress_callback:
+            model.learn(config.total_timesteps,
+                        callback=[eval_callback, progress_callback, save_callback])
+
     else:
         model = SAC("MultiInputPolicy",
                     env,
