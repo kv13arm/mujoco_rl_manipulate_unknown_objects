@@ -3,7 +3,7 @@ from simulation.environment.robot_env import RobotEnv
 from config.train_config import TrainConfig
 from models.feature_extractor import AugmentedNatureCNN
 from models.callbacks import ProgressBarManager, SaveOnBestTrainingRewardCallback
-from stable_baselines3 import SAC
+from stable_baselines3 import SAC, HerReplayBuffer
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 from stable_baselines3.common.monitor import Monitor
@@ -18,11 +18,11 @@ def train(config):
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
 
-    env = VecVideoRecorder(env,
-                           video_folder=model_save_dir + "/videos",
-                           record_video_trigger=lambda x: x % config.record_freq == 0,
-                           video_length=config.vid_length,
-                           name_prefix=f"{config.name}")
+    # env = VecVideoRecorder(env,
+    #                        video_folder=model_save_dir + "/videos",
+    #                        record_video_trigger=lambda x: x % config.record_freq == 0,
+    #                        video_length=config.vid_length,
+    #                        name_prefix=f"{config.name}")
 
     test_env = DummyVecEnv([lambda: make_env])
 
@@ -49,6 +49,26 @@ def train(config):
             model.learn(config.total_timesteps,
                         callback=[eval_callback, progress_callback, save_callback],
                         reset_num_timesteps=False)
+
+    elif config.her_buffer:
+        goal_selection_strategy = 'future'
+
+        model = SAC("MultiInputPolicy",
+                    env,
+                    replay_buffer_class=HerReplayBuffer,
+                    # Parameters for HER
+                    replay_buffer_kwargs=dict(
+                        n_sampled_goal=4,
+                        goal_selection_strategy=goal_selection_strategy,
+                        online_sampling=True,
+                        max_episode_length=config.time_horizon),
+                    policy_kwargs=policy_kwargs,
+                    buffer_size=config.buffer_size,
+                    batch_size=config.batch_size,
+                    verbose=1,
+                    tensorboard_log=model_save_dir)
+        print("Using HER buffer")
+
     else:
         model = SAC("MultiInputPolicy",
                     env,
@@ -92,13 +112,14 @@ if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
 
-    config.sim_env = "/xmls/sugar_cube_env.xml"
-    config.task = "/ablation"
+    config.sim_env = "/xmls/sand_ball_env.xml"
+    config.task = "/reward"
     config.trained_models += config.task
-    config.name = "sugar_cube"
-    config.suffix = "rgb_only_best_model"
+    config.name = "sand_ball"
+    config.suffix = "her_best_model"
     config.verbose = True
-    config.full_observation = False
+    # config.full_observation = False
+    config.her_buffer = True
 
     config.render_eval = False
 
