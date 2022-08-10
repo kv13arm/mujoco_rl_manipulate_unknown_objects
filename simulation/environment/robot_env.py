@@ -220,36 +220,47 @@ class RobotEnv(gym.GoalEnv):
         self.obs["observation"] = new_obs
         # print(f"S: {self.episode_step}, O: {self.gripper_open}, O/C:{open_close > 0.}")
 
-        return self.obs, reward, done, {"episode_step": self.episode_step,
+        return self.obs, reward, done, {"old_obs": old_obs,
+                                        "new_obs": new_obs,
+                                        "init_obj_pos": init_obj_pos,
+                                        "final_obj_pos": final_obj_pos,
+                                        "target_dir": target_dir,
+                                        "gripper_open": self.gripper_open,
+                                        "controls": self.physics.data.ctrl[5:7],
+                                        "object_grasped": object_grasped,
+                                        "episode_step": self.episode_step,
                                         "episode_rewards": self.episode_rewards,
                                         "status": self.status,
                                         "gripper_position": final_gripper_pos,
                                         "object_position": final_obj_pos,
                                         "position_reached": pos_reached,
-                                        "gripper_open": self.gripper_open,
                                         "total_distance": total_distance,
-                                        "line_distance": line_distance,
-                                        "old_obs": old_obs,
-                                        "new_obs": new_obs,
-                                        "init_obj_pos": init_obj_pos,
-                                        "final_obj_pos": final_obj_pos,
-                                        "target_dir": target_dir,
-                                        "controls": self.physics.data.ctrl[5:7],
-                                        "object_grasped": object_grasped}
+                                        "line_distance": line_distance}
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         """
         Compute the reward for the given achieved goal and desired goal.
         """
         args = info
-        env_reward = self._reward_fn(args["old_obs"],
-                                     args["new_obs"],
-                                     args["init_obj_pos"],
-                                     args["final_obj_pos"],
-                                     args["target_dir"],
-                                     args["gripper_open"],
-                                     args["controls"],
-                                     args["object_grasped"])
+        # check for HER implementation as it saves info as a np.array
+        if isinstance(args, np.ndarray):
+            env_reward = self._reward_fn(args[0]["old_obs"],
+                                         args[0]["new_obs"],
+                                         args[0]["init_obj_pos"],
+                                         args[0]["final_obj_pos"],
+                                         args[0]["target_dir"],
+                                         args[0]["gripper_open"],
+                                         args[0]["controls"],
+                                         args[0]["object_grasped"])
+        else:
+            env_reward = self._reward_fn(args["old_obs"],
+                                         args["new_obs"],
+                                         args["init_obj_pos"],
+                                         args["final_obj_pos"],
+                                         args["target_dir"],
+                                         args["gripper_open"],
+                                         args["controls"],
+                                         args["object_grasped"])
 
         if self.config.her_buffer:
             dist = np.linalg.norm(desired_goal - achieved_goal)

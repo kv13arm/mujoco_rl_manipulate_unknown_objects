@@ -62,6 +62,7 @@ def train(config):
                         goal_selection_strategy=goal_selection_strategy,
                         online_sampling=True,
                         max_episode_length=config.time_horizon),
+                    learning_starts=config.time_horizon,
                     policy_kwargs=policy_kwargs,
                     buffer_size=config.buffer_size,
                     batch_size=config.batch_size,
