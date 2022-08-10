@@ -36,7 +36,7 @@ def train(config):
                                  render=config.render_eval)
 
     # save best model based on mean reward
-    save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=model_save_dir + "/best_reward_model")
+    save_callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=model_save_dir)
 
     load_best_model = False
     if load_best_model:
