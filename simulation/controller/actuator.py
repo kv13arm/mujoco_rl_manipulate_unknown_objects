@@ -26,16 +26,21 @@ class Actuator:
         """
         # denormalize action vector from values [-1, 1] to
         # the bounds of the +-max_translation and +-max_rotation
+        if not self.config.include_roll:
+            action = np.array([action[0], action[1], action[2], 0., action[3], action[4]])
+
         action = self._action_scaler.inverse_transform(np.array([action]))
         action = action.squeeze()
 
-        if self.config.include_roll:
-            # parse the action vector
-            # the rotation matrix includes the roll and yaw angles
-            translation, rotation = self._clip_translation_vector(action[:3], action[3:5])
-        else:
-            # the rotation matrix includes only the yaw angle
-            translation, rotation = self._clip_translation_vector(action[:3], action[3:4])
+        translation, rotation = self._clip_translation_vector(action[:3], action[3:5])
+
+        # if self.config.include_roll:
+        #     # parse the action vector
+        #     # the rotation matrix includes the roll and yaw angles
+        #     translation, rotation = self._clip_translation_vector(action[:3], action[3:5])
+        # else:
+        #     # the rotation matrix includes only the yaw angle
+        #     translation, rotation = self._clip_translation_vector(action[:3], action[4:5])
         return translation, rotation, action[-1]
 
     def scale_control(self, qpos, open_close):
@@ -54,10 +59,10 @@ class Actuator:
 
         translation, rotation, open_close = self._normalise_action(action)
 
-        if not self.config.include_roll:
-            rotation = np.array([0., 0., rotation[0]])
-        else:
-            rotation = np.array([rotation[0], 0., rotation[1]])
+        # if not self.config.include_roll:
+        #     rotation = np.array([0., 0., rotation[0]])
+        # else:
+        rotation = np.array([rotation[0], 0., rotation[1]])
 
         current_pos, current_ori = self._get_current_pose()
 
@@ -214,26 +219,28 @@ class Actuator:
         Set up the continuous action space.
         :return: [gym.spaces.Box] action space
         """
-        def _set_bounds(rotations_num):
-            """
-            Set the shape of the action space and normalise to values between [-1, 1].
-            :param rotations_num: [int] number of rotations; if 1, only yaw is allowed,
-                   if 2, yaw and roll are allowed
-            :return: action space scaler and action space shape
-            """
-            _low = np.r_[[-self.config.max_translation] * 3, [-self.config.max_rotation] * rotations_num, -1]
-            _high = -_low
-            # max_translation and max_rotation will be scaled to 1
-            _scaler = MinMaxScaler((-1, 1))
-            _scaler.fit(np.vstack((_low, _high)))
-            return _scaler, _low.shape
+        # def _set_bounds(rotations_num):
+        #     """
+        #     Set the shape of the action space and normalise to values between [-1, 1].
+        #     :param rotations_num: [int] number of rotations; if 1, only yaw is allowed,
+        #            if 2, yaw and roll are allowed
+        #     :return: action space scaler and action space shape
+        #     """
+        _low = np.r_[[-self.config.max_translation] * 3, [-self.config.max_rotation] * 2, -1]
+        _high = -_low
+        # max_translation and max_rotation will be scaled to 1
+        self._action_scaler = MinMaxScaler((-1, 1))
+        self._action_scaler.fit(np.vstack((_low, _high)))
+            # return _scaler, _low.shape
 
         if self.config.include_roll:
             # action space shape is (6,): x, y, z, roll, yaw, gripper open/close
-            self._action_scaler, shape = _set_bounds(2)
+            # self._action_scaler, shape = _set_bounds(2)
+            shape = (6,)
         else:
             # action space shape is (5,): x, y, z, yaw, gripper open/close
-            self._action_scaler, shape = _set_bounds(1)
+            # self._action_scaler, shape = _set_bounds(1)
+            shape = (5,)
 
         self.action_space = gym.spaces.Box(-1., 1., shape=shape, dtype=np.float32)
 
