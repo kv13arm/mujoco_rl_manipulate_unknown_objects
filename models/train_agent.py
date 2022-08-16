@@ -50,42 +50,42 @@ def train(config):
                         callback=[eval_callback, progress_callback, save_callback],
                         reset_num_timesteps=False)
 
-    elif config.her_buffer:
-        goal_selection_strategy = 'future'
-
-        model = SAC("MultiInputPolicy",
-                    env,
-                    replay_buffer_class=HerReplayBuffer,
-                    # Parameters for HER
-                    replay_buffer_kwargs=dict(
-                        n_sampled_goal=4,
-                        goal_selection_strategy=goal_selection_strategy,
-                        online_sampling=True,
-                        max_episode_length=config.time_horizon),
-                    learning_starts=config.time_horizon,
-                    policy_kwargs=policy_kwargs,
-                    buffer_size=config.buffer_size,
-                    batch_size=config.batch_size,
-                    verbose=1,
-                    tensorboard_log=model_save_dir)
-        print("Using HER buffer")
-
-        with ProgressBarManager(config.total_timesteps) as progress_callback:
-            model.learn(config.total_timesteps,
-                        callback=[eval_callback, progress_callback, save_callback])
-
     else:
-        model = SAC("MultiInputPolicy",
-                    env,
-                    policy_kwargs=policy_kwargs,
-                    buffer_size=config.buffer_size,
-                    batch_size=config.batch_size,
-                    verbose=1,
-                    tensorboard_log=model_save_dir)
+        if config.her_buffer:
+            goal_selection_strategy = 'future'
 
-        with ProgressBarManager(config.total_timesteps) as progress_callback:
-            model.learn(config.total_timesteps,
-                        callback=[eval_callback, progress_callback, save_callback])
+            model = SAC("MultiInputPolicy",
+                        env,
+                        replay_buffer_class=HerReplayBuffer,
+                        # Parameters for HER
+                        replay_buffer_kwargs=dict(
+                            n_sampled_goal=4,
+                            goal_selection_strategy=goal_selection_strategy,
+                            online_sampling=True,
+                            max_episode_length=config.time_horizon),
+                        learning_starts=config.time_horizon,
+                        policy_kwargs=policy_kwargs,
+                        buffer_size=config.buffer_size,
+                        batch_size=config.batch_size,
+                        verbose=1,
+                        tensorboard_log=model_save_dir)
+            print("Using HER buffer")
+
+            with ProgressBarManager(config.total_timesteps) as progress_callback:
+                model.learn(config.total_timesteps,
+                            callback=[eval_callback, progress_callback, save_callback])
+        else:
+            model = SAC("MultiInputPolicy",
+                        env,
+                        policy_kwargs=policy_kwargs,
+                        buffer_size=config.buffer_size,
+                        batch_size=config.batch_size,
+                        verbose=1,
+                        tensorboard_log=model_save_dir)
+
+            with ProgressBarManager(config.total_timesteps) as progress_callback:
+                model.learn(config.total_timesteps,
+                            callback=[eval_callback, progress_callback, save_callback])
 
     # model.save(model_save_dir)
 
@@ -121,11 +121,8 @@ if __name__ == '__main__':
     config.task = "/reward"
     config.trained_models += config.task
     config.name = "sand_ball"
-    config.suffix = "her_best_model"
+    config.suffix = "her_reward_best_model"
     config.verbose = True
-    # config.full_observation = False
-    config.her_buffer = True
-
     config.render_eval = False
 
     if config.verbose:
