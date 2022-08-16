@@ -39,7 +39,7 @@ class AugmentedNatureCNN(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor, num_direct_features: int = 2) -> th.Tensor:
 
         # take known amount of direct features, rest are padding zeros
-        other_features = observations["observation"][:, -1, :, :][:, 0, :2]
+        other_features = observations["observation"][:, -1, :, :][:, 0, :num_direct_features]
 
         # obs_cnn = th.as_tensor(observations[:-1, ...][None]).float()
         # img_output = self.linear(self.cnn(obs_cnn))
