@@ -11,5 +11,6 @@ setup(
         "stable-baselines3[extra]",
         "torch==1.12.0",
         "scipy==1.8.1",
+        "seaborn==0.11.2"
     ],
 )
