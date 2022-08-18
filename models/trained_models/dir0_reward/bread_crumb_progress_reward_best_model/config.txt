@@ -1,0 +1,32 @@
+---------------- Config -----------------
+               batch_size: 256                           
+              buffer_size: 500000                        
+                camera_id: 3                             
+            eval_episodes: 3                             
+                eval_freq: 2000                          
+         full_observation: True                          
+          grasp_tolerance: 0.03                          
+           height_capture: 64                            
+               her_buffer: False                         
+                im_reward: False                         
+             include_roll: True                          
+             max_rotation: 0.15                          
+                max_steps: 400                           
+          max_translation: 0.05                          
+                     name: bread_crumb                   	[default: SAC]
+            pos_tolerance: 0.002                         
+              record_freq: 5000                          
+              render_eval: True                          	[default: False]
+    rendering_zoom_height: 7.5                           
+     rendering_zoom_width: 10                            
+                 show_obs: False                         
+                  sim_env: /xmls/bread_crumb_env.xml     	[default: /xmls/acorn_env.xml]
+                   suffix: progress_reward_best_model    	[default: ]
+                     task: /reward                       	[default: None]
+             time_horizon: 400                           
+          total_timesteps: 500000                        
+           trained_models: ./trained_models/reward       	[default: ./trained_models]
+                  verbose: True                          	[default: False]
+               vid_length: 200                           
+            width_capture: 64                            
+----------------- End -------------------

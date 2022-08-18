@@ -1,0 +1,33 @@
+---------------- Config -----------------
+['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'batch_size', 'buffer_size', 'camera_id', 'eval_episodes', 'eval_freq', 'full_observation', 'grasp_tolerance', 'height_capture', 'her_buffer', 'im_reward', 'include_roll', 'max_rotation', 'max_steps', 'max_translation', 'model_save_dir', 'name', 'pos_tolerance', 'render_eval', 'rendering_zoom_height', 'rendering_zoom_width', 'show_obs', 'sim_env', 'suffix', 'task', 'time_horizon', 'total_timesteps', 'trained_models', 'width_capture', 'xml_path']
+
+               batch_size: 256                           
+              buffer_size: 500000                        
+                camera_id: 3                             
+            eval_episodes: 3                             
+                eval_freq: 2000                          
+         full_observation: True                          
+          grasp_tolerance: 0.03                          
+           height_capture: 64                            
+               her_buffer: False                         
+                im_reward: True                          
+             include_roll: True                          
+             max_rotation: 0.15                          
+                max_steps: 400                           
+          max_translation: 0.05                          
+           model_save_dir: /content/drive/MyDrive/thesis/mujoco_rl_manipulate_unknown_objects/trained_models/dir45/bread_crumb_im_reward_best_model
+                     name: bread_crumb_im_reward_best_model
+            pos_tolerance: 0.002                         
+              render_eval: False                         
+    rendering_zoom_height: 7.5                           
+     rendering_zoom_width: 10                            
+                 show_obs: False                         
+                  sim_env: /xmls/bread_crumb_env.xml     
+                   suffix: im_reward_best_model          
+                     task: /dir45                        
+             time_horizon: 400                           
+          total_timesteps: 500000                        
+           trained_models: /content/drive/MyDrive/thesis/mujoco_rl_manipulate_unknown_objects/trained_models/dir45
+            width_capture: 64                            
+                 xml_path: /content/drive/MyDrive/thesis/mujoco_rl_manipulate_unknown_objects/xmls/gripper2.xml
+----------------- End -------------------
