@@ -18,11 +18,11 @@ def train(config):
     env = DummyVecEnv([lambda: Monitor(make_env,
                                        os.path.join(model_save_dir, "log_file"))])
 
-    # env = VecVideoRecorder(env,
-    #                        video_folder=model_save_dir + "/videos",
-    #                        record_video_trigger=lambda x: x % config.record_freq == 0,
-    #                        video_length=config.vid_length,
-    #                        name_prefix=f"{config.name}")
+    env = VecVideoRecorder(env,
+                           video_folder=model_save_dir + "/videos",
+                           record_video_trigger=lambda x: x % config.record_freq == 0,
+                           video_length=config.vid_length,
+                           name_prefix=f"{config.name}")
 
     test_env = DummyVecEnv([lambda: make_env])
 
@@ -92,26 +92,6 @@ def train(config):
     env.close()
     test_env.close()
 
-    # obs = environment.reset()
-    # environment.render()
-    # # print(environment.observation_space)
-    # # print(environment.action_space)
-    # # print(environment.action_space.sample())
-    #
-    # for step in range(40):
-    #     print("Step {}".format(step + 1))
-    #     _, reward, done, info = environment.step(environment.action_space.sample())
-    #     print('reward=', reward, 'done=', done)
-    #     environment.render()
-    #     if done:
-    #         print("Goal reached!", "reward=", reward)
-    #         break
-
-    # environment.reset()
-    # print(environment.physics.named.data.xpos["box_1"])
-    # print(environment.physics.named.data.xquat["box_1"])
-    # obs, _, _, info = environment.step(np.array([0, 0, 0, 0, 1, -0.3]))
-
 
 if __name__ == '__main__':
     config_class = TrainConfig()
@@ -121,7 +101,7 @@ if __name__ == '__main__':
     config.task = "/reward"
     config.trained_models += config.task
     config.name = "sand_ball"
-    config.suffix = "her_reward_best_model"
+    config.suffix = "progress_reward_best_model"
     config.verbose = True
     config.render_eval = False
 

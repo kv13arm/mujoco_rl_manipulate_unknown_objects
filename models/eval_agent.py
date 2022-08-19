@@ -1,57 +1,90 @@
-import numpy as np
+import os
+from pathlib import Path
+from models.feature_extractor import AugmentedNatureCNN
+from scripts.plot_3D import plot_3D
 from simulation.environment.robot_env import RobotEnv
 from config.eval_config import EvalConfig
 from stable_baselines3 import SAC
-from stable_baselines3.common.evaluation import evaluate_policy
+from PIL import Image
+
+
+def make_gif(frames_in):
+    """
+    Save a gif of the trajectory based on the frames "frames_in"
+    """
+    # check if the directory exists, if not create it
+    gif_dir = Path(__file__).resolve().parent.parent.as_posix() + "/visuals/gifs/"
+    if not os.path.exists(gif_dir):
+        os.makedirs(gif_dir)
+
+    # load the frames into a PIL image object and save it as a gif
+    frames = [Image.fromarray(image) for image in frames_in]
+    frame_one = frames[0]
+    frame_one.save(os.path.join(gif_dir, f"{config.train_env}_on_{config.sim_env.split('/')[-1].split('.')[0]}_dir{config.direction}.gif"),
+                   format="GIF", append_images=frames,
+                   save_all=True, duration=100, loop=0)
 
 
 def evaluate():
+    """
+    Evaluate the trained model on the evaluation environment
+    """
     env = RobotEnv(config)
-    model = SAC.load("dqn_lunar", env=env)
 
-    mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=10)
-    print(f"mean_reward:{mean_reward:.2f} +/- {std_reward:.2f}")
+    model_dir = Path(__file__).resolve().parent.parent.as_posix() + "/models/trained_models/"
+    model_path = f"dir{config.direction}_reward/{config.train_env}_{config.reward_type}_reward_best_model"
 
-    total_dist = []
-    line_dist = []
-    robot_pos = []
-    obj_pos = []
+    best_model = os.path.join(model_dir, model_path, 'best_model.zip')
 
-    for episode in range(config.eval_episodes):
-        total_step = []
-        line_step = []
-        robot_step = []
-        obj_step = []
-        obs = env.reset()
-        for i in range(config.max_steps):
-            action, _states = model.predict(obs, deterministic=True)
-            obs, rewards, dones, info = env.step(action)
-            total_step.append(info["total_distance"])
-            line_step.append(info["line_distance"])
-            robot_step.append(info["gripper_position"])
-            obj_step.append(info["object_position"])
-            # env.render()
-            if dones:
-                break
-        total_dist.append(sum(total_step))
-        line_dist.append(sum(line_step))
-        robot_pos.append(robot_step)
-        obj_pos.append(obj_step)
+    newer_python_version = True
+    custom_objects = {}
+    if newer_python_version:
+        custom_objects = {
+            "policy_kwargs": dict(features_extractor_class=AugmentedNatureCNN,
+                                  share_features_extractor=True,
+                                  net_arch=[256, 256]),
+        }
 
-    total_dist_mean = np.mean(total_dist)
-    total_dist_std = np.std(total_dist)
+    model = SAC.load(best_model, env=env, custom_objects=custom_objects)
 
-    line_dist_mean = np.mean(line_dist)
-    line_dist_std = np.std(line_dist)
+    total_step = []
+    line_step = []
+    robot_step = []
+    obj_step = []
+    frames = []
+    obs = env.reset()
+    for i in range(config.max_steps):
+        action, _states = model.predict(obs, deterministic=True)
+        obs, rewards, dones, info = env.step(action)
+        total_step.append(info["total_distance"])
+        line_step.append(info["line_distance"])
+        robot_step.append(info["gripper_position"].copy())
+        obj_step.append(info["object_position"].copy())
+        if config.render:
+            frames.append(env.render(mode='rgb_array'))
+            env.render()
+        if dones:
+            break
 
-    print(f"Total distance travelled by the object:{total_dist_mean:.2f} +/- {total_dist_std:.2f}")
-    print(f"Distance travelled on a straight line:{line_dist_mean:.2f} +/- {line_dist_std:.2f}")
+    print(f"Total distance travelled by the object:{sum(total_step):.2f}")
+    print(f"Distance travelled on a straight line:{sum(line_step):.2f}, {(sum(line_step)/sum(total_step))*100:.2f}%")
+
+    if config.plot_trajectory:
+        plot_3D(robot_step, obj_step, config.sim_env)
+
+    if config.save_gif:
+        make_gif(frames)
 
 
 if __name__ == "__main__":
-    config = EvalConfig.parse()
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--model', type=str, default='./models/best_model/best_model.pkl')
-    # parser.add_argument('--stochastic', action='store_true')
-    # args = parser.parse_args()
+    config_class = EvalConfig()
+    config = config_class.parse()
+    config.sim_env = "/xmls/bread_crumb_env.xml"
+    config.train_env = "bread_crumb"
+    config.reward_type = "im"
+    config.direction = 45
+    config.render = True
+    config.plot_trajectory = True
+    config.save_gif = True
+
     evaluate()

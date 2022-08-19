@@ -39,7 +39,7 @@ class BaseConfig():
         parser.add_argument('--her_buffer', type=bool, default=False, help='True for adding HER buffer')
 
         # Markov decision process parameters
-        # parser.add_argument('--discount_factor', type=float, default=0.99, help='discount factor')
+        parser.add_argument('--direction', type=int, default=0, help='target vector direction')
         parser.add_argument('--time_horizon', type=int, default=400, help='maximum number of steps per episode')
 
         # agent parameters

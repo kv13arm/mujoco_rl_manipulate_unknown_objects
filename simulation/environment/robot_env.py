@@ -27,7 +27,10 @@ class RobotEnv(gym.GoalEnv):
 
         self.np_random = self.seed()
         # self.target_direction = self._get_direction()
-        self.target_direction = np.array([1, 0])
+        if config.direction == 0:
+            self.target_direction = np.array([1, 0])
+        if config.direction == 45:
+            self.target_direction = np.array([1, 1])
 
         self.obs = dict()
 
