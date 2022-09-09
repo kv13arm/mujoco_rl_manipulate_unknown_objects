@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from simulation.environment.robot_env import RobotEnv
 from config.train_config import TrainConfig
 from models.feature_extractor import AugmentedNatureCNN
@@ -10,6 +11,9 @@ from stable_baselines3.common.monitor import Monitor
 
 
 def train(config):
+    model_save_dir = Path(__file__).resolve().parent.as_posix() + config.trained_models + '/' + config.name
+    os.makedirs(model_save_dir, exist_ok=True)
+
     make_env = RobotEnv(config)
     policy_kwargs = dict(features_extractor_class=AugmentedNatureCNN,
                          share_features_extractor=True,
@@ -96,18 +100,16 @@ def train(config):
 if __name__ == '__main__':
     config_class = TrainConfig()
     config = config_class.parse()
+    config.trained_models = f"{config.trained_models}/dir{config.direction}_{config.task}"
 
-    config.sim_env = "/xmls/sand_ball_env.xml"
-    config.task = "/reward"
-    config.trained_models += config.task
-    config.name = "sand_ball"
-    config.suffix = "progress_reward_best_model"
-    config.verbose = True
-    config.render_eval = False
+    # config.sim_env = "/xmls/sand_ball_env.xml"
+    # config.task = "reward"
+    # config.name = "sand_ball"
+    # config.suffix = "progress_reward_best_model"
+    # config.verbose = True
+    # config.render_eval = False
 
     if config.verbose:
         config_class.print_config(config)
-
-    model_save_dir = config.trained_models + '/' + config.name
 
     train(config)

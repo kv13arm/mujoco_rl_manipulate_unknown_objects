@@ -13,7 +13,7 @@ def make_gif(frames_in):
     Save a gif of the trajectory based on the frames "frames_in"
     """
     # check if the directory exists, if not create it
-    gif_dir = Path(__file__).resolve().parent.parent.as_posix() + "/visuals/gifs/"
+    gif_dir = Path(__file__).resolve().parent.as_posix() + "/visuals/gifs/"
     if not os.path.exists(gif_dir):
         os.makedirs(gif_dir)
 
@@ -31,10 +31,10 @@ def evaluate():
     """
     env = RobotEnv(config)
 
-    model_dir = Path(__file__).resolve().parent.parent.as_posix() + "/models/trained_models/"
+    model_dir = Path(__file__).resolve().parent.as_posix() + "/models/trained_models/"
     model_path = f"dir{config.direction}_reward/{config.train_env}_{config.reward_type}_reward_best_model"
 
-    best_model = os.path.join(model_dir, model_path, 'best_model.zip')
+    best_model = os.path.join(model_dir, model_path, 'best_model')
 
     newer_python_version = True
     custom_objects = {}
@@ -79,12 +79,13 @@ def evaluate():
 if __name__ == "__main__":
     config_class = EvalConfig()
     config = config_class.parse()
-    config.sim_env = "/xmls/bread_crumb_env.xml"
-    config.train_env = "bread_crumb"
-    config.reward_type = "im"
-    config.direction = 45
-    config.render = True
-    config.plot_trajectory = True
-    config.save_gif = True
+
+    # config.sim_env = "/xmls/bread_crumb_env.xml"
+    # config.train_env = "bread_crumb"
+    # config.reward_type = "im"
+    # config.direction = 45
+    # config.render = True
+    # config.plot_trajectory = True
+    # config.save_gif = True
 
     evaluate()

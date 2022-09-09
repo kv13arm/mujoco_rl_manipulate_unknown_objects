@@ -43,7 +43,7 @@ class BaseConfig():
         parser.add_argument('--time_horizon', type=int, default=400, help='maximum number of steps per episode')
 
         # agent parameters
-        parser.add_argument('--trained_models', type=str, default='./trained_models',
+        parser.add_argument('--trained_models', type=str, default='/models/trained_models',
                             help='path to trained models')
         parser.add_argument('--name', type=str, default='SAC', help='name of the experiment')
         parser.add_argument('--suffix', default='', type=str,

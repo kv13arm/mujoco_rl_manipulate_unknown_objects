@@ -27,7 +27,7 @@ To run the models, *'models/eval_agent.py'* takes the following arguments:
 * --direction - target vector direction, eg 0 or 45
 
 ```
-python models/eval_agent.py --train_env acorn --sim_env /xmls/acorn_env.xml --render --plot_trajectory --direction 0
+python eval_agent.py --train_env acorn --sim_env /xmls/acorn_env.xml --render True --plot_trajectory True --direction 0
 ```
 
 ## Train models
@@ -37,10 +37,11 @@ To train the models, *'models/train_agent.py'* takes the following arguments:
 * --sim_env - simulated environment, eg "/xmls/acorn_env.xml"
 * --task - adds training task name to saved model folder, eg "/reward"
 * --name - name of the experiment, eg "sand_ball"
+* --suffix - customized suffix: config.name = config.name + suffix: e.g., {model}_{IM_reward}
 * --direction - target vector direction, eg 0 or 45
 
 ```
-python models/train_agent.py --sim_env /xmls/bread_crumb_env.xml --task reward --name bread_crumb --direction 0
+python train_agent.py --sim_env /xmls/bread_crumb_env.xml --task reward --name bread_crumb --suffix progress_reward_best_model --direction 0
 ```
 
 ## Results
