@@ -6,7 +6,7 @@ setup(
     install_requires=[
         "dm-control==1.0.3.post1",
         "gym==0.21.0",
-        "scikit-learn==1.1.1",
+        "scikit-learn==1.5.0",
         "opencv-python==4.6.0.66",
         "stable-baselines3[extra]",
         "torch==1.13.1",
