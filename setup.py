@@ -9,7 +9,7 @@ setup(
         "scikit-learn==1.5.0",
         "opencv-python==4.8.1.78",
         "stable-baselines3[extra]",
-        "torch==2.2.0",
+        "torch==2.6.0",
         "scipy==1.8.1",
         "seaborn==0.11.2"
     ],
